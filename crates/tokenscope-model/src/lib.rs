@@ -4,9 +4,11 @@
 //! defines serializable, validated data.
 
 mod error;
+mod finding;
 mod scenario;
 
 pub use error::ModelError;
+pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
 pub use scenario::{
     Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_NAME_LEN, MintSpec, Scenario, TransferFeeParams,
 };
