@@ -8,4 +8,7 @@ mod error;
 mod harness;
 
 pub use error::ExecError;
-pub use harness::{ExecReport, Harness, TokenAccountView, derive_address};
+pub use harness::{
+    ExecReport, Harness, TokenAccountView, derive_address, self_check, sha256_hex,
+    token_2022_elf_sha256,
+};

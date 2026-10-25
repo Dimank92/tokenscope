@@ -344,3 +344,50 @@ impl Default for Harness {
         Self::new()
     }
 }
+
+/// Lowercase hex SHA-256 of `bytes`.
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// SHA-256 of the bundled Token-2022 program ELF used for every execution.
+pub fn token_2022_elf_sha256() -> String {
+    sha256_hex(mollusk_svm_programs_token_2022::ELF)
+}
+
+/// End-to-end environment check used by `tokenscope doctor`: executes a real 1,000-unit
+/// `TransferChecked` on a 200 bp fee mint and verifies the decoded balances against the documented
+/// fee formula. Returns a one-line description on success.
+pub fn self_check() -> Result<String, ExecError> {
+    use tokenscope_model::TransferFeeParams;
+    let spec = MintSpec {
+        decimals: 6,
+        transfer_fee: Some(TransferFeeParams {
+            basis_points: 200,
+            maximum_fee: u64::MAX,
+        }),
+    };
+    let h = Harness::new();
+    let (alice, bob) = (derive_address("alice"), derive_address("bob"));
+    let mint = h.create_mint("check", &spec)?;
+    let src = h.create_token_account("src", &mint, &alice)?;
+    let dst = h.create_token_account("dst", &mint, &bob)?;
+    h.mint_to(&mint, &src, 10_000)?;
+    h.execute(&h.transfer_checked_ix(&src, &mint, &dst, &alice, 1_000, 6)?)?;
+    let d = h.token_account(&dst)?;
+    let fee = (1_000u64 * 200).div_ceil(10_000);
+    if d.amount == 1_000 - fee && d.withheld == Some(fee) {
+        Ok(format!(
+            "1000 @ 200bp delivered {} with {} withheld",
+            d.amount, fee
+        ))
+    } else {
+        Err(ExecError::Setup {
+            step: "self-check".into(),
+            detail: format!("unexpected destination state {d:?}"),
+        })
+    }
+}

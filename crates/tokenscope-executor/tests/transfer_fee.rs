@@ -106,3 +106,10 @@ fn mint_fee_params_are_read_from_real_mint_state() {
     let mint = h.create_mint("m", &fee_spec(321, 777)).unwrap();
     assert_eq!(h.mint_fee_params(&mint, 0).unwrap(), Some((321, 777)));
 }
+
+#[test]
+fn self_check_runs_real_execution() {
+    let msg = tokenscope_executor::self_check().unwrap();
+    assert!(msg.contains("980") && msg.contains("20"), "{msg}");
+    assert_eq!(tokenscope_executor::token_2022_elf_sha256().len(), 64);
+}
