@@ -1,0 +1,20 @@
+[package]
+name = "tokenscope-report"
+description = "Versioned JSON and human-readable reports plus reproduction artifacts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokenscope-model = { path = "../tokenscope-model" }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

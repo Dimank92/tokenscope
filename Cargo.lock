@@ -3606,6 +3606,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokenscope-report"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokenscope-model",
+]
+
+[[package]]
 name = "tokenscope-scenarios"
 version = "0.1.0"
 dependencies = [
