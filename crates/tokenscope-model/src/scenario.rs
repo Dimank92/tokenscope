@@ -197,3 +197,59 @@ mod tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn arb_action() -> impl Strategy<Value = Action> {
+        prop_oneof![
+            any::<u64>().prop_map(|amount| Action::Deposit { amount }),
+            Just(Action::Withdraw)
+        ]
+    }
+
+    pub(crate) fn arb_scenario() -> impl Strategy<Value = Scenario> {
+        (
+            "[a-z]{1,20}",
+            any::<u64>(),
+            any::<u8>(),
+            proptest::option::of((0u16..=10_000, any::<u64>())),
+            any::<u64>(),
+            proptest::collection::vec(arb_action(), 1..=MAX_ACTIONS),
+        )
+            .prop_map(
+                |(name, seed, decimals, fee, initial_balance, actions)| Scenario {
+                    schema_version: SCHEMA_VERSION,
+                    name,
+                    seed,
+                    target: "demo-escrow-vulnerable".into(),
+                    mint: MintSpec {
+                        decimals,
+                        transfer_fee: fee.map(|(basis_points, maximum_fee)| TransferFeeParams {
+                            basis_points,
+                            maximum_fee,
+                        }),
+                    },
+                    initial_balance,
+                    actions,
+                },
+            )
+    }
+
+    proptest! {
+        #[test]
+        fn any_valid_scenario_round_trips_and_keeps_its_id(s in arb_scenario()) {
+            prop_assert!(s.validate().is_ok());
+            let back = Scenario::from_json(&s.to_json()).unwrap();
+            prop_assert_eq!(back.id(), s.id());
+            prop_assert_eq!(back, s);
+        }
+
+        #[test]
+        fn arbitrary_text_never_panics_the_parser(input in ".{0,200}") {
+            let _ = Scenario::from_json(&input);
+        }
+    }
+}

@@ -223,3 +223,19 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn every_seed_generates_valid_deterministic_scenarios(seed in any::<u64>(), count in 1usize..8) {
+            let a = generate(seed, count, "demo-escrow-vulnerable");
+            prop_assert_eq!(a.len(), count);
+            for s in &a { prop_assert!(s.validate().is_ok()); }
+            prop_assert_eq!(a, generate(seed, count, "demo-escrow-vulnerable"));
+        }
+    }
+}

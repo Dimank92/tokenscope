@@ -12,3 +12,6 @@ tokenscope-model = { path = "../tokenscope-model" }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+proptest = "1"

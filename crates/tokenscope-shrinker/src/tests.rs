@@ -136,3 +136,59 @@ fn candidate_generation_is_strictly_decreasing() {
     assert_eq!(candidates(1), vec![0]);
     assert_eq!(candidates(100), vec![0, 1, 50, 75, 88, 94, 97, 99]);
 }
+
+mod prop {
+    use proptest::prelude::*;
+    use tokenscope_model::{Action, MintSpec, SCHEMA_VERSION, Scenario, TransferFeeParams};
+
+    use crate::*;
+
+    fn arb() -> impl Strategy<Value = Scenario> {
+        (
+            proptest::collection::vec(
+                prop_oneof![
+                    (0u64..1_000_000).prop_map(|amount| Action::Deposit { amount }),
+                    Just(Action::Withdraw)
+                ],
+                1..12,
+            ),
+            0u64..1_000_000,
+            proptest::option::of((0u16..=10_000, 0u64..1_000_000)),
+        )
+            .prop_map(|(actions, initial_balance, fee)| Scenario {
+                schema_version: SCHEMA_VERSION,
+                name: "p".into(),
+                seed: 0,
+                target: "t".into(),
+                mint: MintSpec {
+                    decimals: 6,
+                    transfer_fee: fee.map(|(basis_points, maximum_fee)| TransferFeeParams {
+                        basis_points,
+                        maximum_fee,
+                    }),
+                },
+                initial_balance,
+                actions,
+            })
+    }
+
+    proptest! {
+        /// For a threshold failure ("some deposit >= t"), shrinking keeps the failure, stays valid,
+        /// never grows the input, and lands exactly on the threshold.
+        #[test]
+        fn shrinking_preserves_failure_and_never_grows(s in arb(), t in 1u64..500_000) {
+            let pred = |x: &Scenario| x.actions.iter().any(|a| matches!(a, Action::Deposit { amount } if *amount >= t));
+            if pred(&s) {
+                let r = shrink(&s, ShrinkConfig { max_attempts: 5_000 }, pred).unwrap();
+                prop_assert!(pred(&r.minimized));
+                prop_assert!(r.minimized.validate().is_ok());
+                prop_assert!(r.minimized.actions.len() <= s.actions.len());
+                prop_assert!(r.minimized.initial_balance <= s.initial_balance);
+                prop_assert_eq!(r.minimized.actions.len(), 1);
+                prop_assert_eq!(r.minimized.actions[0], Action::Deposit { amount: t });
+            } else {
+                prop_assert_eq!(shrink(&s, ShrinkConfig::default(), pred), Err(ShrinkError::NotReproducible));
+            }
+        }
+    }
+}
