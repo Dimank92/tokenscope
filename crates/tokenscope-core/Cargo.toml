@@ -1,0 +1,19 @@
+[package]
+name = "tokenscope-core"
+description = "Campaign orchestration: scenario -> real execution -> invariants -> findings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokenscope-adapter = { path = "../tokenscope-adapter" }
+tokenscope-invariants = { path = "../tokenscope-invariants" }
+tokenscope-model = { path = "../tokenscope-model" }
+
+[dev-dependencies]
+tokenscope-scenarios = { path = "../tokenscope-scenarios" }
+
+[lints]
+workspace = true

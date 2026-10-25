@@ -3403,6 +3403,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokenscope-core"
+version = "0.1.0"
+dependencies = [
+ "tokenscope-adapter",
+ "tokenscope-invariants",
+ "tokenscope-model",
+ "tokenscope-scenarios",
+]
+
+[[package]]
 name = "tokenscope-executor"
 version = "0.1.0"
 dependencies = [
