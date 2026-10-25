@@ -3420,6 +3420,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokenscope-invariants"
+version = "0.1.0"
+dependencies = [
+ "tokenscope-model",
+]
+
+[[package]]
 name = "tokenscope-model"
 version = "0.1.0"
 dependencies = [
