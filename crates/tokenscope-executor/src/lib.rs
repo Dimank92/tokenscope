@@ -8,4 +8,4 @@ mod error;
 mod harness;
 
 pub use error::ExecError;
-pub use harness::{Harness, TokenAccountView, derive_address};
+pub use harness::{ExecReport, Harness, TokenAccountView, derive_address};

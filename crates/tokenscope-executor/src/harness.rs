@@ -1,12 +1,15 @@
 //! Stateful Token-2022 execution environment.
 
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use mollusk_svm::{Mollusk, MolluskContext, result::ProgramResult};
+use mollusk_svm::{
+    Mollusk, MolluskContext, program::loader_keys::LOADER_V3, result::ProgramResult,
+};
 use sha2::{Digest, Sha256};
 use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
+use solana_svm_log_collector::LogCollector;
 use spl_token_2022_interface::{
     extension::{
         BaseStateWithExtensions, ExtensionType, StateWithExtensions, account_len,
@@ -40,12 +43,26 @@ pub struct TokenAccountView {
 pub struct Harness {
     ctx: MolluskContext<HashMap<Pubkey, Account>>,
     payer: Pubkey,
+    logs: Rc<RefCell<LogCollector>>,
+}
+
+/// Outcome of executing one instruction, including captured logs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecReport {
+    /// `None` on success, otherwise the runtime error text.
+    pub error: Option<String>,
+    /// Log lines emitted by this instruction.
+    pub logs: Vec<String>,
+    /// Compute units consumed.
+    pub compute_units: u64,
 }
 
 impl Harness {
     /// Create an environment with the system program and Token-2022 loaded and a funded payer.
     pub fn new() -> Self {
         let mut mollusk = Mollusk::default();
+        let logs = LogCollector::new_ref();
+        mollusk.logger = Some(Rc::clone(&logs));
         mollusk_svm_programs_token_2022::add_program(&mut mollusk);
         let payer = derive_address("payer");
         let mut store = HashMap::new();
@@ -56,6 +73,7 @@ impl Harness {
         Self {
             ctx: mollusk.with_context(store),
             payer,
+            logs,
         }
     }
 
@@ -74,13 +92,55 @@ impl Harness {
         &mut self.ctx.mollusk
     }
 
+    /// Register a program ELF under the upgradeable loader (as deployed programs are).
+    pub fn load_program(&mut self, program_id: &Pubkey, elf: &[u8]) {
+        self.ctx
+            .mollusk
+            .add_program_with_loader_and_elf(program_id, &LOADER_V3, elf);
+    }
+
+    /// Execute one instruction and report errors, logs and compute usage. State persists only
+    /// when the instruction succeeds.
+    pub fn execute_logged(&self, ix: &Instruction) -> ExecReport {
+        let start = self.logs.borrow().get_recorded_content().len();
+        let result = self.ctx.process_instruction(ix);
+        let logs = self.logs.borrow().get_recorded_content()[start..].to_vec();
+        let error = match result.program_result {
+            ProgramResult::Success => None,
+            other => Some(format!("{other:?}")),
+        };
+        ExecReport {
+            error,
+            logs,
+            compute_units: result.compute_units_consumed,
+        }
+    }
+
     /// Execute one instruction, persisting state on success (failed instructions leave state intact).
     pub fn execute(&self, ix: &Instruction) -> Result<(), ExecError> {
-        let result = self.ctx.process_instruction(ix);
-        match result.program_result {
-            ProgramResult::Success => Ok(()),
-            other => Err(ExecError::Instruction(format!("{other:?}"))),
+        match self.execute_logged(ix).error {
+            None => Ok(()),
+            Some(e) => Err(ExecError::Instruction(e)),
         }
+    }
+
+    /// Create an account owned by `owner` with `space` bytes, rent-exempt, funded by the payer.
+    pub fn create_owned_account(
+        &self,
+        label: &str,
+        space: usize,
+        owner: &Pubkey,
+    ) -> Result<Pubkey, ExecError> {
+        let address = derive_address(&format!("account/{label}"));
+        let ix = solana_system_interface::instruction::create_account(
+            &self.payer,
+            &address,
+            self.rent_for(space),
+            space as u64,
+            owner,
+        );
+        self.setup("create-account", &[ix])?;
+        Ok(address)
     }
 
     fn setup(&self, step: &str, ixs: &[Instruction]) -> Result<(), ExecError> {
