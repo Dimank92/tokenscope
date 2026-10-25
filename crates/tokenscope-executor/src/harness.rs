@@ -61,6 +61,11 @@ impl Harness {
     /// Create an environment with the system program and Token-2022 loaded and a funded payer.
     pub fn new() -> Self {
         let mut mollusk = Mollusk::default();
+        // Mollusk installs a debug-level logger by default. Silence it unless the user opted in
+        // via RUST_LOG; execution logs are captured explicitly through `LogCollector` instead.
+        if std::env::var_os("RUST_LOG").is_none() {
+            log::set_max_level(log::LevelFilter::Off);
+        }
         let logs = LogCollector::new_ref();
         mollusk.logger = Some(Rc::clone(&logs));
         mollusk_svm_programs_token_2022::add_program(&mut mollusk);
