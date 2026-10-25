@@ -5,10 +5,22 @@ use std::path::PathBuf;
 
 use tokenscope_adapter::{EscrowAdapter, EscrowFlavor};
 use tokenscope_invariants::{classify, evaluate, findings};
-use tokenscope_model::{Campaign, OutcomeClass, RunRecord, Scenario};
+use tokenscope_model::{Campaign, Finding, OutcomeClass, RunRecord, Scenario};
+use tokenscope_shrinker::{ShrinkConfig, ShrinkError, ShrinkReport, shrink};
+
+pub mod corpus;
 
 /// Target identifiers this build can run.
 pub const TARGETS: [&str; 2] = ["demo-escrow-vulnerable", "demo-escrow-corrected"];
+
+/// Result of replaying a finding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Replay {
+    /// Whether the finding's invariant was violated again.
+    pub reproduced: bool,
+    /// The replayed run.
+    pub run: RunRecord,
+}
 
 /// Runs scenarios and campaigns.
 #[derive(Debug, Clone, Default)]
@@ -69,6 +81,37 @@ impl Engine {
                 }
             }
         }
+    }
+
+    /// Re-run a finding's reproduction scenario and report whether the same invariant is still
+    /// violated. Replay is deterministic: identical inputs give identical runs.
+    pub fn replay_finding(&self, finding: &Finding) -> Replay {
+        let run = self.run_scenario(&finding.reproduction.scenario);
+        let reproduced = run
+            .findings
+            .iter()
+            .any(|f| f.invariant_id == finding.invariant_id);
+        Replay { reproduced, run }
+    }
+
+    /// Minimize a finding's scenario while the same invariant stays violated, validating every
+    /// accepted reduction by real execution. Returns the finding with `minimized` populated plus
+    /// shrink statistics.
+    pub fn minimize(
+        &self,
+        finding: &Finding,
+        config: ShrinkConfig,
+    ) -> Result<(Finding, ShrinkReport), ShrinkError> {
+        let invariant = finding.invariant_id.clone();
+        let report = shrink(&finding.reproduction.scenario, config, |candidate| {
+            self.run_scenario(candidate)
+                .findings
+                .iter()
+                .any(|f| f.invariant_id == invariant)
+        })?;
+        let mut out = finding.clone();
+        out.minimized = Some(report.minimized.clone());
+        Ok((out, report))
     }
 
     /// Run every scenario in order and bundle the results.

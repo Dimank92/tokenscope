@@ -11,8 +11,11 @@ publish.workspace = true
 tokenscope-adapter = { path = "../tokenscope-adapter" }
 tokenscope-invariants = { path = "../tokenscope-invariants" }
 tokenscope-model = { path = "../tokenscope-model" }
+tokenscope-shrinker = { path = "../tokenscope-shrinker" }
+thiserror.workspace = true
 
 [dev-dependencies]
+tempfile = "3"
 tokenscope-scenarios = { path = "../tokenscope-scenarios" }
 
 [lints]
