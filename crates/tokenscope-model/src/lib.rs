@@ -3,11 +3,13 @@
 //! Nothing in this crate executes programs or touches the network; it only
 //! defines serializable, validated data.
 
+mod campaign;
 mod error;
 mod finding;
 mod scenario;
 mod trace;
 
+pub use campaign::{Campaign, RunRecord, Totals};
 pub use error::ModelError;
 pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
 pub use scenario::{
