@@ -1,0 +1,32 @@
+[package]
+name = "tokenscope-cli"
+description = "The `tokenscope` command-line interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "tokenscope"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokenscope-adapter = { path = "../tokenscope-adapter" }
+tokenscope-core = { path = "../tokenscope-core" }
+tokenscope-executor = { path = "../tokenscope-executor" }
+tokenscope-invariants = { path = "../tokenscope-invariants" }
+tokenscope-model = { path = "../tokenscope-model" }
+tokenscope-report = { path = "../tokenscope-report" }
+tokenscope-scenarios = { path = "../tokenscope-scenarios" }
+tokenscope-shrinker = { path = "../tokenscope-shrinker" }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true
