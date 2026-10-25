@@ -1,0 +1,67 @@
+//! Background campaign runner. Execution happens on a worker thread; the UI only receives events.
+
+use std::{path::PathBuf, sync::mpsc, thread};
+
+use tokenscope_core::Engine;
+use tokenscope_model::{Campaign, RunRecord, Scenario};
+use tokenscope_scenarios::{builtin_suite, generate};
+
+/// Progress events from the worker.
+#[derive(Debug)]
+pub enum RunEvent {
+    /// A campaign with `total` scenarios started.
+    Started {
+        /// Number of scenarios.
+        total: usize,
+    },
+    /// One scenario finished.
+    Run(Box<RunRecord>),
+    /// The whole campaign finished.
+    Finished(Box<Campaign>),
+}
+
+/// Scenarios a campaign runs: the built-in suite (optional) plus seeded ones.
+pub fn build_scenarios(target: &str, seed: u64, count: usize, suite: bool) -> Vec<Scenario> {
+    let mut s = if suite { builtin_suite(target) } else { vec![] };
+    s.extend(generate(seed, count, target));
+    s
+}
+
+/// Start a campaign on a worker thread and return the event stream. Dropping the receiver stops
+/// the worker after the current scenario.
+pub fn spawn(
+    target: String,
+    seed: u64,
+    count: usize,
+    suite: bool,
+    program_dir: Option<PathBuf>,
+) -> mpsc::Receiver<RunEvent> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let engine = match program_dir {
+            Some(d) => Engine::with_program_dir(d),
+            None => Engine::new(),
+        };
+        let scenarios = build_scenarios(&target, seed, count, suite);
+        if tx
+            .send(RunEvent::Started {
+                total: scenarios.len(),
+            })
+            .is_err()
+        {
+            return;
+        }
+        let mut runs = Vec::with_capacity(scenarios.len());
+        for s in &scenarios {
+            let record = engine.run_scenario(s);
+            runs.push(record.clone());
+            if tx.send(RunEvent::Run(Box::new(record))).is_err() {
+                return;
+            }
+        }
+        let _ = tx.send(RunEvent::Finished(Box::new(Campaign::new(
+            target, seed, runs,
+        ))));
+    });
+    rx
+}

@@ -1,0 +1,23 @@
+[package]
+name = "tokenscope-tui"
+description = "Interactive terminal UI over real TokenScope engine state"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ratatui = "0.30"
+tokenscope-core = { path = "../tokenscope-core" }
+tokenscope-invariants = { path = "../tokenscope-invariants" }
+tokenscope-model = { path = "../tokenscope-model" }
+tokenscope-report = { path = "../tokenscope-report" }
+tokenscope-scenarios = { path = "../tokenscope-scenarios" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile = "3"
+
+[lints]
+workspace = true
