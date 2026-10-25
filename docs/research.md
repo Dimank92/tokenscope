@@ -52,22 +52,50 @@ script verifies the archive SHA-256 against the release `checksums.txt` and reje
 invoked explicitly (`rtk cargo ...`, `rtk git ...`); raw output is used whenever full diagnostics matter.
 RTK is a development tool only and is not a TokenScope dependency.
 
-## 5. Ecosystem audit (in progress)
+## 5. Ecosystem audit
 
-| Tool | What the evidence shows | Overlap / limits |
+Evidence gathered from vendor docs, changelogs, crates.io/docs.rs pages and guides (2026-10-24/25).
+"Not verified" means the capability was not found in what was read, not that it is absent.
+
+| Tool | What the evidence shows | Overlap and limits |
 |---|---|---|
-| Trident (Ackee) | Rust fuzzer for Anchor programs on the Anza SVM; honggfuzz; invariant checks; regression runs | Substantial overlap on SVM fuzzing + invariants. Token-2022 and shrinking support **still being verified** (see section 6). |
-| svmScope 0.6.0 | Mainnet-transaction replay and mutation on LiteSVM, HTML report | Replay/forensics tool; no Token-2022 invariant engine seen. |
+| **Trident** (Ackee) 0.12.0 | Manually guided fuzzer for **Anchor** programs; generates harnesses from the IDL; `#[init]/#[flow]/#[end]`; invariants as asserts; honggfuzz under the hood; crash-file replay via `fuzz run-debug`; metrics dashboard. Changelog 0.12.0 (2025-11-27): "add support for Token 2022 program". `trident-fuzz` feature `token` exposes `initialize_mint_2022` with extensions (TransferFeeConfig listed), account extensions (ImmutableOwner, MemoTransfer, CpiGuard), `get_mint`/`get_token_account`. A Quicknode/Ackee guide fuzzes a token escrow. | **Substantial overlap**: fuzzing + invariants + Token-2022 helpers. No crash *minimization* feature was found in the docs read (only seed/crash-file replay); not verified. Anchor-centric (IDL driven). |
+| **Crucible** (Asymmetric Research), public beta, `crucible-fuzz-cli` 0.2.1-0.3.0-alpha.1 | Coverage-guided invariant fuzzer on **LiteSVM** with sBPF tracing; works on any compiled `.so`; `#[invariant_test]` after every action; `crucible tmin` minimizes a crash to the smallest action sequence; `cmin` minimizes the corpus; slated for `anchor fuzz` in Anchor 2.0 (anchor-lang.com docs list `anchor fuzz tmin`). | **Largest overlap** with TokenScope's pipeline *and* shrinking. Token-2022-specific scenario support not verified. Far more powerful general fuzzer (coverage guidance, multi-core). |
+| svmScope 0.6.0 | Mainnet-transaction replay and mutation on LiteSVM, HTML report | Replay/forensics; no Token-2022 invariant engine seen. |
 | Surfpool | Local validator with mainnet forking (per solana-dev-skill) | Integration environment, not an invariant tester. Docs not read directly. |
 | Solana Upgrade Guard, EPIC, layoutd | Upgrade and account-layout safety | Different problem. |
+| `cf-invariants-anchor` 0.1.1 | AI-assisted invariant suggestion emitting Crucible fixtures | Complementary (invariant authoring). |
 | Ratchet, Termina | **Unverified** - could not be identified | Need links. |
 
-No uniqueness claim is made.
+### Differentiation (evidence-based, deliberately modest)
+
+TokenScope is **not** the first Solana invariant fuzzer, not the first to have Token-2022 helpers
+(Trident 0.12.0), and not the first with crash minimization (Crucible `tmin`). It is also not
+coverage-guided. What it offers that the audit did not find elsewhere (absence of evidence only):
+
+1. A **domain-specific scenario model** for Token-2022 integrations (fee parameters, rounding and
+   cap boundaries, zero and 100% fees) with **executed-state ground truth**: expected values are
+   decoded from real Token-2022 account data after running the real program, never from a formula.
+2. An explicit **four-way outcome taxonomy** (setup error / execution failure / invariant violation
+   / suspected vulnerability) enforced in code and tests, so harness problems cannot masquerade
+   as findings.
+3. **Adapter-defined semantics** (a program ID alone says nothing) plus **self-contained,
+   content-addressed scenarios and findings** with deterministic replay, bounded shrinking against
+   the same real-execution predicate, and a committed regression corpus.
+4. A small, auditable Rust code base with a CLI/TUI that show the same campaign data.
+
+Whether these are meaningful advantages over Trident or Crucible for real users is untested; no
+benchmark against them has been run. Wording in the README must not claim uniqueness.
 
 ## 6. Decisions
 
 1. Native (non-Anchor) escrow using `pinocchio`: smallest dependency surface, hand-checkable CPI.
 2. Demo program is excluded from the host workspace and built with `cargo build-sbf --tools-version v1.58`.
-3. SVM framework chosen by a time-boxed experiment in M2 (Mollusk default).
+3. SVM framework chosen by a time-boxed experiment in M2: **Mollusk** (see `docs/experiments/svm-framework.md`).
 4. Findings and scenarios are versioned JSON (`FORMAT.md`).
 5. Patches live outside the repo; canonical manifest and README live in the delivery directory.
+6. `ratatui` 0.30.2 re-exports `crossterm` (`ratatui::crossterm`), so the TUI uses that re-export and
+   the crossterm version cannot drift from the one ratatui was built against (this resolves the
+   earlier open question).
+7. Edition 2024 / `unsafe_code = forbid` for host crates; the SBF program uses `deny` because the
+   `entrypoint!` macro expands to unsafe code.
