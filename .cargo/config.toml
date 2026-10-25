@@ -1,0 +1,3 @@
+# Mollusk enables solana_logger by default; keep test output readable. Override with RUST_LOG=debug.
+[env]
+RUST_LOG = { value = "off", force = false }
