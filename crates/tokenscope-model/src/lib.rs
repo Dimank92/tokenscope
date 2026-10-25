@@ -3,6 +3,14 @@
 //! Nothing in this crate executes programs or touches the network; it only
 //! defines serializable, validated data.
 
+mod error;
+mod scenario;
+
+pub use error::ModelError;
+pub use scenario::{
+    Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_NAME_LEN, MintSpec, Scenario, TransferFeeParams,
+};
+
 /// Version of the persisted JSON formats produced by this crate (see `FORMAT.md`).
 pub const SCHEMA_VERSION: u32 = 1;
 
