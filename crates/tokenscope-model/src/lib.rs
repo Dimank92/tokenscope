@@ -4,12 +4,14 @@
 //! defines serializable, validated data.
 
 mod campaign;
+mod corpus;
 mod error;
 mod finding;
 mod scenario;
 mod trace;
 
 pub use campaign::{Campaign, RunRecord, Totals};
+pub use corpus::{CorpusCase, Expectation};
 pub use error::ModelError;
 pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
 pub use scenario::{
