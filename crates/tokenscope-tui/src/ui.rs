@@ -84,17 +84,22 @@ fn action_label(a: Action) -> String {
     match a {
         Action::Deposit { amount } => format!("Deposit {{ amount: {amount} }}"),
         Action::Withdraw => "Withdraw".into(),
+        Action::FreezeDepositor => "FreezeDepositor".into(),
+        Action::ThawDepositor => "ThawDepositor".into(),
+        Action::UnauthorizedWithdraw => "UnauthorizedWithdraw".into(),
     }
 }
 
 fn snap_line(label: &str, s: &Snapshot) -> String {
     format!(
-        "  {label}: vault={} withheld={} recorded={} depositor={} destination={}",
+        "  {label}: vault={} withheld={} recorded={} depositor={} destination={} frozen={} attacker={}",
         s.vault_amount,
         s.vault_withheld.map_or("-".into(), |w| w.to_string()),
         s.escrow_recorded,
         s.depositor_balance,
-        s.destination_balance
+        s.destination_balance,
+        s.depositor_frozen,
+        s.attacker_balance
     )
 }
 
@@ -386,7 +391,9 @@ fn token_config(frame: &mut Frame, app: &App, area: Rect) {
     lines.push(plain(""));
     lines.push(plain("authorities (harness-defined):"));
     lines.push(plain("  mint authority / transfer-fee config authority / withdraw-withheld authority: harness payer"));
-    lines.push(plain("  freeze authority: none"));
+    lines.push(plain(
+        "  freeze authority: harness payer (used by FreezeDepositor / ThawDepositor)",
+    ));
     lines.push(plain(
         "  vault owner: escrow PDA (seeds [\"escrow\", escrow_state])",
     ));
@@ -577,12 +584,14 @@ fn help(frame: &mut Frame, app: &App, area: Rect) {
             "  Real execution of the system program, the bundled Token-2022 ELF and the demo escrow in the Mollusk SVM",
         ),
         plain("  Token-2022 TransferFeeConfig: rounding, maximum-fee cap, zero and 100% fees"),
-        plain("  Invariants: INV-ACCT-001, INV-SOLV-001, INV-ATOM-001, INV-CONS-001"),
+        plain("  Invariants: INV-ACCT-001, INV-SOLV-001, INV-ATOM-001, INV-CONS-001, INV-AUTH-001"),
         plain(""),
         plain("Limitations"),
-        plain("  Only the demo escrow target; no other Token-2022 extensions yet"),
         plain(
-            "  Authorization invariants are not implemented; a violation is not proof of exploitability",
+            "  Only the demo escrow target; Token-2022 coverage is transfer fees plus freeze/thaw of token accounts",
+        ),
+        plain(
+            "  Only the depositor-signature authorization path is modeled; a violation is not proof of exploitability",
         ),
         plain(
             "  The Token-2022 ELF is a mainnet snapshot bundled by mollusk-svm-programs-token-2022",

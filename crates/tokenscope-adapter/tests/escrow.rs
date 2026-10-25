@@ -186,3 +186,67 @@ fn runs_are_deterministic() {
     );
     assert_eq!(a, b);
 }
+
+#[test]
+fn frozen_source_account_rejects_deposits_atomically_until_thawed() {
+    for flavor in [EscrowFlavor::Vulnerable, EscrowFlavor::Corrected] {
+        let t = run(
+            flavor,
+            Some((200, u64::MAX)),
+            10_000,
+            vec![Action::FreezeDepositor, DEP, Action::ThawDepositor, DEP],
+        );
+        assert_eq!(t.steps[0].status, StepStatus::Ok);
+        assert!(
+            t.steps[0].after.depositor_frozen,
+            "freeze decoded from real account state"
+        );
+        let rejected = &t.steps[1];
+        assert!(
+            matches!(rejected.status, StepStatus::Failed { .. }),
+            "{flavor:?}"
+        );
+        assert!(
+            rejected
+                .logs
+                .iter()
+                .any(|l| l.to_lowercase().contains("frozen")),
+            "{:?}",
+            rejected.logs
+        );
+        assert_eq!(
+            rejected.before, rejected.after,
+            "failed deposit persisted nothing"
+        );
+        assert!(!t.steps[2].after.depositor_frozen);
+        assert_eq!(
+            t.steps[3].status,
+            StepStatus::Ok,
+            "deposit works after thaw"
+        );
+        assert_eq!(t.steps[3].after.vault_amount, 980);
+    }
+}
+
+#[test]
+fn unauthorized_withdrawal_is_rejected_by_both_flavors_and_changes_nothing() {
+    for flavor in [EscrowFlavor::Vulnerable, EscrowFlavor::Corrected] {
+        let t = run(
+            flavor,
+            None,
+            10_000,
+            vec![DEP, Action::UnauthorizedWithdraw],
+        );
+        let a = &t.steps[1];
+        match &a.status {
+            StepStatus::Failed { error } => assert!(
+                error.contains("Custom(5)"),
+                "expected EscrowError::Unauthorized, got {error}"
+            ),
+            StepStatus::Ok => panic!("unauthorized withdrawal must not succeed on {flavor:?}"),
+        }
+        assert_eq!(a.before, a.after);
+        assert_eq!(a.after.attacker_balance, 0);
+        assert_eq!(a.after.vault_amount, 1_000);
+    }
+}

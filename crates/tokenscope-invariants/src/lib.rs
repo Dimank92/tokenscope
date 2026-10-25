@@ -75,9 +75,23 @@ pub const CONS_001: InvariantDef = InvariantDef {
     exceptions: &["a missing transfer-fee extension counts as withheld = 0"],
 };
 
+/// Authorization: unauthorized actors cause no prohibited transition.
+pub const AUTH_001: InvariantDef = InvariantDef {
+    id: "INV-AUTH-001",
+    name: "Unauthorized withdrawal is rejected and changes nothing",
+    description: "A withdrawal signed by someone other than the escrow's depositor must fail, must leave every observed quantity unchanged, and must not credit the attacker.",
+    preconditions: &[
+        "the step is an unauthorized withdrawal (attacker signs in the depositor's position)",
+    ],
+    expected: "step failed && after == before && attacker_balance unchanged",
+    exceptions: &[
+        "only the depositor-signature check is modeled; other authority paths are not exercised",
+    ],
+};
+
 /// All invariants implemented by this crate.
-pub fn catalog() -> [InvariantDef; 4] {
-    [ACCT_001, SOLV_001, ATOM_001, CONS_001]
+pub fn catalog() -> [InvariantDef; 5] {
+    [ACCT_001, SOLV_001, ATOM_001, CONS_001, AUTH_001]
 }
 
 /// Result of evaluating one invariant on one step.
@@ -186,15 +200,42 @@ fn cons_001(step: &StepRecord) -> Verdict {
     }
 }
 
+fn auth_001(step: &StepRecord) -> Verdict {
+    if step.action != Action::UnauthorizedWithdraw {
+        return Verdict::NotApplicable;
+    }
+    if step.status == StepStatus::Ok {
+        return Verdict::Violated {
+            observed: format!(
+                "unauthorized withdrawal succeeded: attacker balance {} -> {}, vault {} -> {}",
+                step.before.attacker_balance,
+                step.after.attacker_balance,
+                step.before.vault_amount,
+                step.after.vault_amount
+            ),
+        };
+    }
+    if step.before != step.after {
+        return Verdict::Violated {
+            observed: format!(
+                "rejected unauthorized withdrawal still changed state: before={:?} after={:?}",
+                step.before, step.after
+            ),
+        };
+    }
+    Verdict::Held
+}
+
 type Check = (&'static str, fn(&StepRecord) -> Verdict);
 
 /// Evaluate every invariant on every step of `trace`, in step then catalog order.
 pub fn evaluate(trace: &ExecutionTrace) -> Vec<Evaluation> {
-    let checks: [Check; 4] = [
+    let checks: [Check; 5] = [
         (ACCT_001.id, acct_001),
         (SOLV_001.id, solv_001),
         (ATOM_001.id, atom_001),
         (CONS_001.id, cons_001),
+        (AUTH_001.id, auth_001),
     ];
     let mut out = Vec::new();
     for step in &trace.steps {
@@ -220,7 +261,7 @@ pub fn classify(trace: &ExecutionTrace, evaluations: &[Evaluation]) -> OutcomeCl
     } else if trace
         .steps
         .iter()
-        .any(|s| matches!(s.status, StepStatus::Failed { .. }))
+        .any(|s| matches!(s.status, StepStatus::Failed { .. }) && !s.action.expects_rejection())
     {
         OutcomeClass::ExecutionFailure
     } else {
@@ -279,6 +320,10 @@ fn severity_for(id: &str) -> (Severity, &'static str) {
         "INV-ACCT-001" => (
             Severity::Medium,
             "The escrow over- or under-credits relative to tokens actually held. Impact depends on how credits are later redeemed; this check alone does not prove exploitability.",
+        ),
+        "INV-AUTH-001" => (
+            Severity::High,
+            "An actor other than the depositor was able to act on the escrow. Severity is advisory; confirm the signer model before treating this as exploitable.",
         ),
         "INV-CONS-001" => (
             Severity::Medium,

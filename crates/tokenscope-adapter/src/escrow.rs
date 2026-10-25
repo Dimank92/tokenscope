@@ -145,6 +145,8 @@ impl EscrowAdapter {
         let depositor = derive_address("depositor");
         let source = h.create_token_account("depositor-src", &mint, &depositor)?;
         let destination = h.create_token_account("withdraw-dst", &mint, &depositor)?;
+        let attacker = derive_address("attacker");
+        let attacker_dst = h.create_token_account("attacker-dst", &mint, &attacker)?;
         let vault = h.create_token_account("vault", &mint, &authority)?;
         h.mint_to(&mint, &source, scenario.initial_balance)?;
 
@@ -177,6 +179,8 @@ impl EscrowAdapter {
                 escrow_recorded: u64::from_le_bytes(b),
                 depositor_balance: h.token_account(&source)?.amount,
                 destination_balance: h.token_account(&destination)?.amount,
+                depositor_frozen: h.token_account(&source)?.frozen,
+                attacker_balance: h.token_account(&attacker_dst)?.amount,
             })
         };
 
@@ -222,6 +226,22 @@ impl EscrowAdapter {
                         data,
                     }
                 }
+                Action::FreezeDepositor => h.freeze_ix(&source, &mint, true)?,
+                Action::ThawDepositor => h.freeze_ix(&source, &mint, false)?,
+                Action::UnauthorizedWithdraw => Instruction {
+                    program_id,
+                    accounts: vec![
+                        AccountMeta::new(state, false),
+                        // The attacker signs in the depositor's position.
+                        AccountMeta::new_readonly(attacker, true),
+                        AccountMeta::new(vault, false),
+                        AccountMeta::new(attacker_dst, false),
+                        AccountMeta::new_readonly(mint, false),
+                        AccountMeta::new_readonly(token_program, false),
+                        AccountMeta::new_readonly(authority, false),
+                    ],
+                    data: vec![2],
+                },
                 Action::Withdraw => Instruction {
                     program_id,
                     accounts: vec![

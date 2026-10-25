@@ -17,6 +17,10 @@ pub struct Snapshot {
     pub depositor_balance: u64,
     /// Withdrawal destination token balance.
     pub destination_balance: u64,
+    /// Whether the depositor's source token account is frozen.
+    pub depositor_frozen: bool,
+    /// Token balance of the attacker's account (used by authorization checks).
+    pub attacker_balance: u64,
 }
 
 /// Whether an instruction executed successfully.
@@ -115,6 +119,8 @@ mod tests {
             escrow_recorded: 0,
             depositor_balance: 0,
             destination_balance: 0,
+            depositor_frozen: false,
+            attacker_balance: 0,
         }
     }
 

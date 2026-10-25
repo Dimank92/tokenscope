@@ -70,6 +70,28 @@ fn builtin_suite_vulnerable_vs_corrected() {
         by_name(&v, "zero-amount-deposit").outcome,
         OutcomeClass::Pass
     );
+    // Frozen source: the real Token-2022 rejects the deposit; that is an execution failure.
+    for run in [&v, &c] {
+        assert_eq!(
+            by_name(run, "frozen-source-deposit-rejected").outcome,
+            OutcomeClass::ExecutionFailure
+        );
+    }
+    // After a thaw the fee bug is exposed again on the vulnerable flavor only.
+    assert_eq!(
+        by_name(&v, "freeze-thaw-then-deposit").outcome,
+        OutcomeClass::InvariantViolation
+    );
+    assert_eq!(
+        by_name(&c, "freeze-thaw-then-deposit").outcome,
+        OutcomeClass::Pass
+    );
+    // Authorization holds on both flavors: the rejected attack is the desired behavior.
+    for run in [&v, &c] {
+        let r = by_name(run, "unauthorized-withdraw-rejected");
+        assert_eq!(r.outcome, OutcomeClass::Pass);
+        assert!(r.findings.iter().all(|f| f.invariant_id != "INV-AUTH-001"));
+    }
     // Withdrawing with nothing recorded is a valid zero-amount transfer.
     assert_eq!(
         by_name(&v, "withdraw-with-nothing-recorded").outcome,

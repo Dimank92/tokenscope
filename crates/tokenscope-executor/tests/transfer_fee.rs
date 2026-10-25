@@ -113,3 +113,49 @@ fn self_check_runs_real_execution() {
     assert!(msg.contains("980") && msg.contains("20"), "{msg}");
     assert_eq!(tokenscope_executor::token_2022_elf_sha256().len(), 64);
 }
+
+#[test]
+fn freeze_authority_can_freeze_and_thaw_and_frozen_accounts_cannot_transfer() {
+    let h = Harness::new();
+    let alice = tokenscope_executor::derive_address("alice");
+    let bob = tokenscope_executor::derive_address("bob");
+    let spec = MintSpec {
+        decimals: 6,
+        transfer_fee: None,
+    };
+    let mint = h.create_mint("m", &spec).unwrap();
+    let src = h.create_token_account("src", &mint, &alice).unwrap();
+    let dst = h.create_token_account("dst", &mint, &bob).unwrap();
+    h.mint_to(&mint, &src, 100).unwrap();
+    assert!(!h.token_account(&src).unwrap().frozen);
+
+    h.execute(&h.freeze_ix(&src, &mint, true).unwrap()).unwrap();
+    assert!(
+        h.token_account(&src).unwrap().frozen,
+        "state decoded from real account data"
+    );
+    let ix = h
+        .transfer_checked_ix(&src, &mint, &dst, &alice, 10, 6)
+        .unwrap();
+    let rep = h.execute_logged(&ix);
+    assert!(
+        rep.error.is_some(),
+        "transfer from a frozen account must fail"
+    );
+    assert!(
+        rep.logs.iter().any(|l| l.to_lowercase().contains("frozen")),
+        "{:?}",
+        rep.logs
+    );
+    assert_eq!(
+        h.token_account(&src).unwrap().amount,
+        100,
+        "failed transfer persisted nothing"
+    );
+
+    h.execute(&h.freeze_ix(&src, &mint, false).unwrap())
+        .unwrap();
+    assert!(!h.token_account(&src).unwrap().frozen);
+    h.execute(&ix).unwrap();
+    assert_eq!(h.token_account(&dst).unwrap().amount, 10);
+}

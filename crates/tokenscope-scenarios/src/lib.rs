@@ -132,6 +132,27 @@ pub fn builtin_suite(target: &str) -> Vec<Scenario> {
             vec![dep(1_000)],
         ),
         base(
+            "frozen-source-deposit-rejected",
+            t,
+            Some((200, max)),
+            10_000,
+            vec![Action::FreezeDepositor, dep(1_000)],
+        ),
+        base(
+            "freeze-thaw-then-deposit",
+            t,
+            Some((200, max)),
+            10_000,
+            vec![Action::FreezeDepositor, Action::ThawDepositor, dep(1_000)],
+        ),
+        base(
+            "unauthorized-withdraw-rejected",
+            t,
+            None,
+            10_000,
+            vec![dep(1_000), Action::UnauthorizedWithdraw],
+        ),
+        base(
             "withdraw-with-nothing-recorded",
             t,
             Some((200, max)),

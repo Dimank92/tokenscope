@@ -12,6 +12,8 @@ fn snap(vault: u64, withheld: Option<u64>, recorded: u64, depositor: u64) -> Sna
         escrow_recorded: recorded,
         depositor_balance: depositor,
         destination_balance: 0,
+        depositor_frozen: false,
+        attacker_balance: 0,
     }
 }
 
@@ -268,4 +270,62 @@ fn catalog_ids_are_unique_and_documented() {
         assert!(!a.preconditions.is_empty() && !a.exceptions.is_empty() && !a.expected.is_empty());
         assert!(c.iter().skip(i + 1).all(|b| b.id != a.id));
     }
+}
+
+fn unauthorized(status_ok: bool, before: Snapshot, after: Snapshot) -> StepRecord {
+    step(1, Action::UnauthorizedWithdraw, before, after, status_ok)
+}
+
+#[test]
+fn auth_001_holds_when_the_attack_is_rejected_without_state_change() {
+    let b = snap(1_000, None, 1_000, 9_000);
+    let t = trace(vec![unauthorized(false, b, b)]);
+    assert_eq!(verdicts(&t, "INV-AUTH-001"), vec![Verdict::Held]);
+    // A rejected, expected-to-fail attack is not an execution failure.
+    assert_eq!(classify(&t, &evaluate(&t)), OutcomeClass::Pass);
+}
+
+#[test]
+fn auth_001_flags_a_successful_unauthorized_withdrawal() {
+    let before = snap(1_000, None, 1_000, 9_000);
+    let mut after = snap(0, None, 0, 9_000);
+    after.attacker_balance = 1_000;
+    let t = trace(vec![unauthorized(true, before, after)]);
+    match &verdicts(&t, "INV-AUTH-001")[0] {
+        Verdict::Violated { observed } => assert!(
+            observed.contains("attacker balance 0 -> 1000"),
+            "{observed}"
+        ),
+        v => panic!("expected violation, got {v:?}"),
+    }
+    assert_eq!(
+        classify(&t, &evaluate(&t)),
+        OutcomeClass::InvariantViolation
+    );
+}
+
+#[test]
+fn auth_001_flags_a_rejection_that_still_changed_state() {
+    let before = snap(1_000, None, 1_000, 9_000);
+    let after = snap(1_000, None, 0, 9_000);
+    let t = trace(vec![unauthorized(false, before, after)]);
+    assert!(matches!(
+        verdicts(&t, "INV-AUTH-001")[0],
+        Verdict::Violated { .. }
+    ));
+}
+
+#[test]
+fn auth_001_is_not_applicable_to_other_actions() {
+    assert_eq!(
+        verdicts(&trace(vec![corrected_deposit()]), "INV-AUTH-001"),
+        vec![Verdict::NotApplicable]
+    );
+}
+
+#[test]
+fn ordinary_failed_steps_still_classify_as_execution_failures() {
+    let b = snap(0, None, 0, 10);
+    let t = trace(vec![step(0, DEP, b, b, false)]);
+    assert_eq!(classify(&t, &evaluate(&t)), OutcomeClass::ExecutionFailure);
 }

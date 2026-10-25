@@ -41,6 +41,20 @@ pub enum Action {
     },
     /// Withdraw the depositor's recorded balance from the escrow.
     Withdraw,
+    /// The mint's freeze authority freezes the depositor's source token account.
+    FreezeDepositor,
+    /// The mint's freeze authority thaws the depositor's source token account.
+    ThawDepositor,
+    /// An attacker (not the depositor) signs a withdrawal. A correct program must reject it.
+    UnauthorizedWithdraw,
+}
+
+impl Action {
+    /// Whether a rejected instruction is the *desired* outcome for this adversarial action, so a
+    /// failed step must not be classified as an execution failure.
+    pub fn expects_rejection(self) -> bool {
+        matches!(self, Action::UnauthorizedWithdraw)
+    }
 }
 
 /// A complete, self-contained, replayable scenario.

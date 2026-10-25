@@ -16,7 +16,7 @@ use spl_token_2022_interface::{
         transfer_fee::{TransferFeeAmount, TransferFeeConfig, instruction as fee_ix},
     },
     instruction as token_ix,
-    state::{Account as TokenAccount, Mint},
+    state::{Account as TokenAccount, AccountState, Mint},
 };
 use tokenscope_model::MintSpec;
 
@@ -37,6 +37,8 @@ pub struct TokenAccountView {
     pub amount: u64,
     /// Fee amount withheld on this account by the transfer-fee extension, if present.
     pub withheld: Option<u64>,
+    /// Whether the account is frozen.
+    pub frozen: bool,
 }
 
 /// Execution environment holding a Mollusk SVM and its persistent account store.
@@ -201,12 +203,17 @@ impl Harness {
             );
         }
         ixs.push(
-            token_ix::initialize_mint2(&token, &mint, &self.payer, None, spec.decimals).map_err(
-                |e| ExecError::Setup {
-                    step: "init-mint-ix".into(),
-                    detail: e.to_string(),
-                },
-            )?,
+            token_ix::initialize_mint2(
+                &token,
+                &mint,
+                &self.payer,
+                Some(&self.payer),
+                spec.decimals,
+            )
+            .map_err(|e| ExecError::Setup {
+                step: "init-mint-ix".into(),
+                detail: e.to_string(),
+            })?,
         );
         self.setup("create-mint", &ixs)?;
         Ok(mint)
@@ -263,6 +270,26 @@ impl Harness {
         self.setup("mint-to", &[ix])
     }
 
+    /// Build a `FreezeAccount` or `ThawAccount` instruction signed by the mint's freeze authority
+    /// (the harness payer).
+    pub fn freeze_ix(
+        &self,
+        account: &Pubkey,
+        mint: &Pubkey,
+        freeze: bool,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        let ix = if freeze {
+            token_ix::freeze_account(&token, account, mint, &self.payer, &[])
+        } else {
+            token_ix::thaw_account(&token, account, mint, &self.payer, &[])
+        };
+        ix.map_err(|e| ExecError::Setup {
+            step: "freeze-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
     /// Build a `TransferChecked` instruction (does not execute it).
     pub fn transfer_checked_ix(
         &self,
@@ -314,6 +341,7 @@ impl Harness {
         Ok(TokenAccountView {
             amount: state.base.amount,
             withheld,
+            frozen: state.base.state == AccountState::Frozen,
         })
     }
 
