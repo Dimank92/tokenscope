@@ -132,7 +132,7 @@ pub fn builtin_suite(target: &str) -> Vec<Scenario> {
             vec![dep(1_000)],
         ),
         base(
-            "failure-withdraw-without-deposit",
+            "withdraw-with-nothing-recorded",
             t,
             Some((200, max)),
             10,
