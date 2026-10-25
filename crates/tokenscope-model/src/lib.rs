@@ -6,12 +6,14 @@
 mod error;
 mod finding;
 mod scenario;
+mod trace;
 
 pub use error::ModelError;
 pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
 pub use scenario::{
     Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_NAME_LEN, MintSpec, Scenario, TransferFeeParams,
 };
+pub use trace::{AccountRef, ExecutionTrace, Snapshot, StepRecord, StepStatus};
 
 /// Version of the persisted JSON formats produced by this crate (see `FORMAT.md`).
 pub const SCHEMA_VERSION: u32 = 1;
