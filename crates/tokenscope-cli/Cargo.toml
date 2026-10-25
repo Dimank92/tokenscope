@@ -24,6 +24,7 @@ tokenscope-model = { path = "../tokenscope-model" }
 tokenscope-report = { path = "../tokenscope-report" }
 tokenscope-scenarios = { path = "../tokenscope-scenarios" }
 tokenscope-shrinker = { path = "../tokenscope-shrinker" }
+tokenscope-tui = { path = "../tokenscope-tui" }
 
 [dev-dependencies]
 tempfile = "3"

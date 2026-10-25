@@ -103,6 +103,31 @@ pub enum Command {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// Open the interactive terminal UI over a live campaign.
+    Tui {
+        /// Target to run (`demo-escrow-vulnerable` or `demo-escrow-corrected`).
+        #[arg(long, default_value = "demo-escrow-vulnerable")]
+        target: String,
+        /// Seed for generated scenarios.
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Number of generated scenarios.
+        #[arg(long, default_value_t = 0)]
+        count: usize,
+        /// Skip the built-in suite.
+        #[arg(long)]
+        no_suite: bool,
+        /// Artifact directory used by the export key (default: `tokenscope-out`).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Corpus directory (default: `fixtures/corpus`).
+        #[arg(long)]
+        corpus: Option<PathBuf>,
+        /// Run the campaign headlessly and print one screen as text (dashboard, scenarios,
+        /// execution, findings, token, invariants, corpus, reports, help) instead of opening the UI.
+        #[arg(long)]
+        snapshot: Option<String>,
+    },
     /// Manage the regression corpus.
     Corpus {
         /// Corpus operation.

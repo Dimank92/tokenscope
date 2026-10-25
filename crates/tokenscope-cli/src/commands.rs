@@ -164,6 +164,26 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             format,
             out: out_path,
         } => report(&campaign_id, format, out_dir(out_path), out),
+        Command::Tui {
+            target,
+            seed,
+            count,
+            no_suite,
+            out: out_path,
+            corpus,
+            snapshot,
+        } => {
+            let opts = tokenscope_tui::Options {
+                target,
+                seed,
+                count,
+                suite: !no_suite,
+                out_dir: out_dir(out_path),
+                corpus_dir: corpus_dir(corpus),
+                program_dir: None,
+            };
+            tui(opts, snapshot, out)
+        }
         Command::Corpus { command } => corpus(command, out),
     }
 }
@@ -524,6 +544,43 @@ fn corpus(cmd: CorpusCommand, out: &mut dyn Write) -> Result<i32> {
                 case.expect.violated,
                 path.display()
             )?;
+            Ok(EXIT_OK)
+        }
+    }
+}
+
+fn tui(
+    opts: tokenscope_tui::Options,
+    snapshot: Option<String>,
+    out: &mut dyn Write,
+) -> Result<i32> {
+    use tokenscope_tui::Screen;
+    if opts.count > MAX_GENERATED {
+        return Err(usage(format!(
+            "generated scenario count {} exceeds the limit of {MAX_GENERATED}",
+            opts.count
+        )));
+    }
+    if !opts.suite && opts.count == 0 {
+        return Err(usage(
+            "nothing to run: enable the built-in suite or request generated scenarios",
+        ));
+    }
+    if resolve_targets(&opts.target)?.len() != 1 {
+        return Err(usage(
+            "the TUI runs one target at a time; press `t` inside it to toggle",
+        ));
+    }
+    match snapshot {
+        Some(name) => {
+            let screen =
+                Screen::parse(&name).ok_or_else(|| usage(format!("unknown screen `{name}`")))?;
+            write!(out, "{}", tokenscope_tui::snapshot(opts, screen, 140, 40))?;
+            Ok(EXIT_OK)
+        }
+        None => {
+            tokenscope_tui::run_interactive(opts)
+                .map_err(|e| CliError::Setup(format!("terminal error: {e}")))?;
             Ok(EXIT_OK)
         }
     }

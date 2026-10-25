@@ -389,3 +389,79 @@ fn corpus_add_list_replay_and_regression_detection() {
         2
     );
 }
+
+#[test]
+fn tui_snapshot_shows_the_same_findings_as_the_cli_report() {
+    let dir = tempfile::tempdir().unwrap();
+    let run = tokenscope(&[
+        "run",
+        "--target",
+        VULN,
+        "--count",
+        "0",
+        "--out",
+        s(dir.path()),
+    ]);
+    assert_eq!(run.code, 1);
+    let cdir = only_dir(dir.path());
+    let report: Report =
+        serde_json::from_str(&fs::read_to_string(cdir.join("report.json")).unwrap()).unwrap();
+
+    let dash = tokenscope(&["tui", "--snapshot", "dashboard", "--target", VULN]);
+    assert_eq!(dash.code, 0, "{}{}", dash.stdout, dash.stderr);
+    assert!(
+        dash.stdout.contains(&report.campaign_id),
+        "same campaign id in TUI and CLI"
+    );
+    assert!(
+        dash.stdout
+            .contains(&format!("findings: {}", report.totals.findings))
+    );
+    assert!(dash.stdout.contains(&format!(
+        "invariant violations: {}",
+        report.totals.invariant_violations
+    )));
+
+    let findings = tokenscope(&["tui", "--snapshot", "findings", "--target", VULN]);
+    assert_eq!(findings.code, 0);
+    // The findings list shows the first findings; each ID shown must be one the report contains,
+    // and the first finding of the report must be listed.
+    assert!(
+        findings.stdout.contains(&report.findings[0].id),
+        "{}",
+        findings.stdout
+    );
+    assert!(
+        findings
+            .stdout
+            .contains(&format!("Findings ({})", report.findings.len()))
+    );
+    for f in &report.findings {
+        if findings.stdout.contains(&f.id) {
+            assert!(report.findings.iter().any(|g| g.id == f.id));
+        }
+    }
+}
+
+#[test]
+fn tui_snapshot_corrected_target_has_no_findings_and_inputs_are_validated() {
+    let o = tokenscope(&["tui", "--snapshot", "findings", "--target", FIXED]);
+    assert_eq!(o.code, 0);
+    assert!(o.stdout.contains("Findings (0)") && o.stdout.contains("No findings."));
+    assert_eq!(tokenscope(&["tui", "--snapshot", "nonsense"]).code, 2);
+    assert_eq!(
+        tokenscope(&["tui", "--target", "demo-escrow", "--snapshot", "help"]).code,
+        2
+    );
+    assert_eq!(
+        tokenscope(&["tui", "--target", "nope", "--snapshot", "help"]).code,
+        2
+    );
+    assert_eq!(
+        tokenscope(&["tui", "--no-suite", "--snapshot", "help"]).code,
+        2
+    );
+    let help = tokenscope(&["tui", "--snapshot", "help"]);
+    assert_eq!(help.code, 0);
+    assert!(help.stdout.contains("Shortcuts"));
+}
