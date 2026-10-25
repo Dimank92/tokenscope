@@ -3454,6 +3454,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokenscope-shrinker"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+ "tokenscope-model",
+]
+
+[[package]]
 name = "toml_datetime"
 version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
