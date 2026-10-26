@@ -39,6 +39,10 @@ pub struct TokenAccountView {
     pub withheld: Option<u64>,
     /// Whether the account is frozen.
     pub frozen: bool,
+    /// Approved delegate, if any.
+    pub delegate: Option<Pubkey>,
+    /// Remaining amount the delegate may spend.
+    pub delegated_amount: u64,
 }
 
 /// Execution environment holding a Mollusk SVM and its persistent account store.
@@ -68,7 +72,9 @@ impl Harness {
         if std::env::var_os("RUST_LOG").is_none() {
             log::set_max_level(log::LevelFilter::Off);
         }
-        let logs = LogCollector::new_ref();
+        // The default collector silently stops recording after 10 KB, which would drop the logs of
+        // later steps in a long-lived harness. A harness lives for one scenario, so no limit.
+        let logs = LogCollector::new_ref_with_limit(None);
         mollusk.logger = Some(Rc::clone(&logs));
         mollusk_svm_programs_token_2022::add_program(&mut mollusk);
         let payer = derive_address("payer");
@@ -158,6 +164,11 @@ impl Harness {
             })?;
         }
         Ok(())
+    }
+
+    /// Rent-exempt minimum balance for `space` bytes.
+    pub fn rent_exempt_balance(&self, space: usize) -> u64 {
+        self.rent_for(space)
     }
 
     fn rent_for(&self, space: usize) -> u64 {
@@ -342,6 +353,8 @@ impl Harness {
             amount: state.base.amount,
             withheld,
             frozen: state.base.state == AccountState::Frozen,
+            delegate: Option::<Pubkey>::from(state.base.delegate),
+            delegated_amount: state.base.delegated_amount,
         })
     }
 
@@ -364,6 +377,63 @@ impl Harness {
                 u64::from(f.maximum_fee),
             )
         }))
+    }
+
+    /// Extension types present on a mint, decoded from real account data.
+    pub fn mint_extension_types(&self, mint: &Pubkey) -> Result<Vec<ExtensionType>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        state.get_extension_types().map_err(|e| ExecError::Decode {
+            account: mint.to_string(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Extension types present on a token account, decoded from real account data.
+    pub fn token_account_extension_types(
+        &self,
+        address: &Pubkey,
+    ) -> Result<Vec<ExtensionType>, ExecError> {
+        let acct = self.account(address)?;
+        let state = StateWithExtensions::<TokenAccount>::unpack(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
+        })?;
+        state.get_extension_types().map_err(|e| ExecError::Decode {
+            account: address.to_string(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Total supply of a mint, decoded from real account data.
+    pub fn mint_supply(&self, mint: &Pubkey) -> Result<u64, ExecError> {
+        let acct = self.account(mint)?;
+        StateWithExtensions::<Mint>::unpack(&acct.data)
+            .map(|s| s.base.supply)
+            .map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Whether a `Pausable` mint is currently paused (`None` without the extension).
+    pub fn mint_paused(&self, mint: &Pubkey) -> Result<Option<bool>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<spl_token_2022_interface::extension::pausable::PausableConfig>()
+            .ok()
+            .map(|c| bool::from(c.paused)))
     }
 
     /// Raw account bytes (for evidence capture and tests).

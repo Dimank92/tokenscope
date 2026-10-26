@@ -159,3 +159,46 @@ fn freeze_authority_can_freeze_and_thaw_and_frozen_accounts_cannot_transfer() {
     h.execute(&ix).unwrap();
     assert_eq!(h.token_account(&dst).unwrap().amount, 10);
 }
+
+#[test]
+fn logs_of_late_instructions_are_still_captured() {
+    // Regression: solana's default LogCollector drops everything after 10 KB, which silently
+    // blanked the logs (and hid errors) of later steps in a long-lived harness.
+    let h = Harness::new();
+    let (alice, bob) = (
+        tokenscope_executor::derive_address("alice"),
+        tokenscope_executor::derive_address("bob"),
+    );
+    let spec = MintSpec {
+        decimals: 6,
+        transfer_fee: None,
+    };
+    let mint = h.create_mint("m", &spec).unwrap();
+    let src = h.create_token_account("src", &mint, &alice).unwrap();
+    let dst = h.create_token_account("dst", &mint, &bob).unwrap();
+    h.mint_to(&mint, &src, 1_000_000).unwrap();
+    let ix = h
+        .transfer_checked_ix(&src, &mint, &dst, &alice, 1, 6)
+        .unwrap();
+    let first = h.execute_logged(&ix);
+    assert!(!first.logs.is_empty());
+    let mut total_log_bytes = 0;
+    for _ in 0..200 {
+        total_log_bytes += h
+            .execute_logged(&ix)
+            .logs
+            .iter()
+            .map(String::len)
+            .sum::<usize>();
+    }
+    assert!(
+        total_log_bytes > 10_000,
+        "must have crossed the old 10 KB limit, got {total_log_bytes}"
+    );
+    let late = h.execute_logged(&ix);
+    assert!(
+        late.logs.iter().any(|l| l.contains("TransferChecked")),
+        "late logs missing: {:?}",
+        late.logs
+    );
+}
