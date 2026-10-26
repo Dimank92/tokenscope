@@ -137,6 +137,24 @@ impl Harness {
         }
     }
 
+    /// Create an account at a caller-chosen address (for example a PDA, which the harness may
+    /// create directly because Mollusk does not verify signatures).
+    pub fn create_owned_account_at(
+        &self,
+        address: &Pubkey,
+        space: usize,
+        owner: &Pubkey,
+    ) -> Result<(), ExecError> {
+        let ix = solana_system_interface::instruction::create_account(
+            &self.payer,
+            address,
+            self.rent_for(space),
+            space as u64,
+            owner,
+        );
+        self.setup("create-account-at", &[ix])
+    }
+
     /// Create an account owned by `owner` with `space` bytes, rent-exempt, funded by the payer.
     pub fn create_owned_account(
         &self,
