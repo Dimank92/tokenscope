@@ -13,7 +13,7 @@ use tokenscope_shrinker::ShrinkConfig;
 
 const VULN: &str = "demo-escrow-vulnerable";
 
-fn stats(name: &str, items_per_iter: usize, samples: &mut Vec<f64>) {
+fn stats(name: &str, items_per_iter: usize, samples: &mut [f64]) {
     samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let min = samples[0];
     let median = samples[samples.len() / 2];
