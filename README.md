@@ -9,8 +9,8 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** early (version 0.1.0). One target (a demo escrow), one extension (Token-2022
-> `TransferFeeConfig`), four invariants. See [Limitations](#limitations) and
+> **Status:** early (version 0.1.0). One target (a demo escrow), Token-2022 `TransferFeeConfig`
+> plus freeze/thaw of token accounts, five invariants. See [Limitations](#limitations) and
 > [docs/supported-extensions.md](docs/supported-extensions.md) before relying on any result.
 > TokenScope does not detect vulnerabilities in general, and an invariant violation is **not**
 > proof of exploitability. It is also not the first tool in this space; see
@@ -29,13 +29,13 @@ With a 2% fee, depositing 1,000 credits 1,000 on the vulnerable escrow while the
 
 ```text
 $ tokenscope run --target demo-escrow-vulnerable --count 0     # exit code 1
-executed 11 | pass 3 | execution failures 1 | invariant violations 7 | setup errors 0 | findings 14
+executed 14 | pass 4 | execution failures 2 | invariant violations 8 | setup errors 0 | findings 16
 ...
 fd_eb4facd442285199 INV-ACCT-001 [Medium] target=demo-escrow-vulnerable scenario=sc_3573a0f4384e7945 seed=0
   observed: step 0: deposit of 1000 credited 1000 but the vault received 980 (withheld fee delta 20)
 
 $ tokenscope run --target demo-escrow-corrected --count 0      # exit code 0
-executed 11 | pass 10 | execution failures 1 | invariant violations 0 | setup errors 0 | findings 0
+executed 14 | pass 12 | execution failures 2 | invariant violations 0 | setup errors 0 | findings 0
 ```
 
 Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
@@ -81,10 +81,10 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 
 ## Limitations
 
-* One target program (the demo escrow) and one Token-2022 extension (transfer fees). Transfer
-  hooks, frozen/default-state accounts, pausable, CPI Guard, delegates and permanent delegates are
-  **not implemented**; no support is claimed.
-* Authorization invariants are not implemented yet.
+* One target program (the demo escrow). Token-2022 coverage is `TransferFeeConfig` and
+  freeze/thaw of token accounts. Transfer hooks, default account state, pausable, CPI Guard,
+  delegates and permanent delegates are **not implemented**; no support is claimed.
+* Authorization is modeled only as the depositor-signature check (`INV-AUTH-001`).
 * Scenario generation is seeded pseudo-random, not coverage-guided.
 * Token-2022 is the mainnet-snapshot ELF bundled by `mollusk-svm-programs-token-2022` 0.16.2; it
   may differ from other Token-2022 builds.

@@ -27,9 +27,20 @@ It is used only as an independent cross-check in tests; invariants use decoded s
 * `TransferCheckedWithFee`, `WithdrawWithheldTokens*`, `HarvestWithheldTokensToMint`.
 * Fee-config authority handling.
 
+## Freeze / thaw of token accounts - supported (limited)
+
+The harness creates every mint with the harness payer as **freeze authority**. The actions
+`FreezeDepositor` / `ThawDepositor` run real `FreezeAccount` / `ThawAccount` instructions; the
+frozen flag is decoded from account data. Verified by
+`crates/tokenscope-executor/tests/transfer_fee.rs` (a transfer from a frozen account fails with the
+Token-2022 "frozen" log and persists nothing; it succeeds after thaw) and
+`crates/tokenscope-adapter/tests/escrow.rs` (escrow deposits fail atomically while the source is
+frozen and work after the thaw). **Not covered:** the `DefaultAccountState` extension (accounts
+frozen at creation), freezing the vault or destination, freeze-authority changes.
+
 ## Not supported (no claim made)
 
-Transfer hooks, default account state / frozen accounts, pausable, CPI Guard, permanent delegate,
+Transfer hooks, default account state, pausable, CPI Guard, permanent delegate,
 delegates and approvals, interest-bearing, non-transferable, confidential transfers, metadata,
 group/member pointers, mint close authority. Their behavior has not been tested here. Extension
 incompatibility checks are likewise not implemented.

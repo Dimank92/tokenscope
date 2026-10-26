@@ -10,10 +10,14 @@ Integrations that assume Token-2022 behaves like SPL Token. Implemented and demo
 * **Nominal-vs-received accounting** under `TransferFeeConfig` (INV-ACCT-001, INV-SOLV-001,
   INV-CONS-001).
 
-Listed in the project brief but **not yet implemented**: transfer-hook account requirements, frozen
-or default-state accounts, pausable behavior, CPI Guard restrictions, authority/delegate and
-permanent-delegate assumptions, extension incompatibilities. Failure atomicity is checked
-(INV-ATOM-001) but holds structurally on the current target.
+* **Frozen source accounts** (freeze/thaw by the freeze authority): deposits must fail atomically.
+* **Unauthorized actors**: a withdrawal signed by a non-depositor must be rejected (INV-AUTH-001);
+  only the depositor-signature path is modeled.
+
+Listed in the project brief but **not yet implemented**: transfer-hook account requirements,
+`DefaultAccountState`, pausable behavior, CPI Guard restrictions, delegate and permanent-delegate
+assumptions, extension incompatibilities. Failure atomicity is checked (INV-ATOM-001) but holds
+structurally on the current target.
 
 ## Assumptions
 

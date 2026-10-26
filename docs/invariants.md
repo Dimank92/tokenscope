@@ -41,11 +41,23 @@ to `suspected_vulnerability` automatically.
 * **Expected result:** holds for *both* escrow flavors, because the fee is accounted for; it
   guards the harness's own observations.
 
+## INV-AUTH-001: unauthorized withdrawal is rejected and changes nothing
+
+* **Precondition:** the step is `UnauthorizedWithdraw` (an attacker signs in the depositor's position).
+* **Expected:** the step fails, every observed quantity is unchanged, and the attacker's balance
+  does not increase.
+* **Exceptions:** only the depositor-signature check is modeled; other authority paths (e.g. a
+  forged PDA, delegates) are not exercised.
+* **Classification note:** because rejection is the desired outcome, a failed
+  `UnauthorizedWithdraw` step does not make a run an execution failure
+  (`Action::expects_rejection`).
+* **Result today:** holds on both escrow flavors (the escrow returns `EscrowError::Unauthorized`);
+  detection of a *successful* attack is covered by unit tests on synthetic traces.
+
 ## Not implemented
 
-* **Authorization** (unauthorized actors cause no prohibited transition): the adapter has no
-  attacker action yet.
-* Invariants for transfer hooks, frozen accounts, pausable, CPI Guard, delegates.
+Invariants for transfer hooks, default account state, pausable, CPI Guard, delegates and permanent
+delegates.
 
 ## Adding an invariant
 

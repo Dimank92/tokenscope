@@ -14,7 +14,7 @@ Readers must reject unknown versions with a structured error (`ModelError::Unsup
 | `mint.decimals` | u8 | |
 | `mint.transfer_fee` | null or `{basis_points: u16 (<=10000), maximum_fee: u64}` | |
 | `initial_balance` | u64 | minted to the depositor before the first action |
-| `actions` | array (1..=64) | `{"kind":"deposit","amount":u64}` or `{"kind":"withdraw"}` |
+| `actions` | array (1..=64) | `{"kind":"deposit","amount":u64}`, `{"kind":"withdraw"}`, `{"kind":"freeze_depositor"}`, `{"kind":"thaw_depositor"}`, `{"kind":"unauthorized_withdraw"}`; unknown kinds are rejected |
 
 Scenario ID = `sc_` + first 8 bytes (hex) of SHA-256 over the compact JSON serialization.
 
@@ -35,7 +35,8 @@ Later milestones extend this file with campaign, report and corpus formats.
 ## Execution trace (`schema_version` 1, embedded in campaigns)
 
 `scenario_id`, `target`, `initial` and each step's `before`/`after` are *snapshots*:
-`{vault_amount, vault_withheld (u64|null), escrow_recorded, depositor_balance, destination_balance}`.
+`{vault_amount, vault_withheld (u64|null), escrow_recorded, depositor_balance, destination_balance,
+depositor_frozen (bool), attacker_balance}`.
 Steps: `{index, action, before, after, status, logs[], compute_units}` where `status` is
 `{"status":"ok"}` or `{"status":"failed","error":string}`. `accounts[]` is `{label, address}`.
 

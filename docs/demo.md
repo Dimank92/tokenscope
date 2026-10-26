@@ -21,13 +21,16 @@ tokenscope run --target demo-escrow-vulnerable --count 0 --out demo-out   # exit
 ```
 
 ```text
-executed 11 | pass 3 | execution failures 1 | invariant violations 7 | setup errors 0 | findings 14
+executed 14 | pass 4 | execution failures 2 | invariant violations 8 | setup errors 0 | findings 16
   pass                   control-no-fee
   invariant-violation    fee-2pct-deposit
   invariant-violation    fee-2pct-deposit-withdraw
   ...
   pass                   zero-amount-deposit                (zero fee, nothing to lose)
   execution-failure      failure-insufficient-funds         (rejected instruction, not a finding)
+  execution-failure      frozen-source-deposit-rejected     (real Token-2022 rejects a frozen source)
+  invariant-violation    freeze-thaw-then-deposit           (bug exposed again after the thaw)
+  pass                   unauthorized-withdraw-rejected     (the rejected attack is the desired behavior)
 ```
 
 The `fee-2pct-deposit` finding (evidence is decoded from real account data):
@@ -53,10 +56,11 @@ tokenscope run --target demo-escrow-corrected --count 0 --out demo-out    # exit
 ```
 
 ```text
-executed 11 | pass 10 | execution failures 1 | invariant violations 0 | setup errors 0 | findings 0
+executed 14 | pass 12 | execution failures 2 | invariant violations 0 | setup errors 0 | findings 0
 ```
 
-The same scenarios pass. The one execution failure is the intentional insufficient-funds case.
+The same scenarios pass. The two execution failures are the intentional insufficient-funds and
+frozen-source cases.
 The corrected escrow's withdrawal is itself a fee-bearing transfer: 980 leaves the vault and 960
 arrives (asserted in `crates/tokenscope-adapter/tests/escrow.rs`).
 
