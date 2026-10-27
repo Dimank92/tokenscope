@@ -69,6 +69,7 @@ fn committed_minimized_case_is_what_minimization_derives_from_the_noisy_original
             }),
         },
         initial_balance: 9_999_999,
+        extensions: vec![],
         actions: vec![
             Action::Withdraw,
             Action::Deposit { amount: 50_000 },

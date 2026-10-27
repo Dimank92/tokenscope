@@ -429,6 +429,64 @@ impl Harness {
         })
     }
 
+    /// Whether CPI Guard is enabled on a token account (`None` when the account has no
+    /// `CpiGuard` extension), decoded from real account data.
+    pub fn token_cpi_guard(&self, address: &Pubkey) -> Result<Option<bool>, ExecError> {
+        let acct = self.account(address)?;
+        let state = StateWithExtensions::<TokenAccount>::unpack(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
+        })?;
+        Ok(state
+            .get_extension::<spl_token_2022_interface::extension::cpi_guard::CpiGuard>()
+            .ok()
+            .map(|c| bool::from(c.lock_cpi)))
+    }
+
+    /// The top-level instructions that enable or disable CPI Guard on `account`. Enabling first
+    /// reallocates the account for the `CpiGuard` extension when it is missing (the owner signs
+    /// both). Disabling must also be a top-level instruction: the program rejects it inside a CPI.
+    pub fn cpi_guard_instructions(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        enable: bool,
+    ) -> Result<Vec<Instruction>, ExecError> {
+        use spl_token_2022_interface::extension::cpi_guard;
+        let token = spl_token_2022_interface::id();
+        fn map(e: impl ToString) -> ExecError {
+            ExecError::Setup {
+                step: "cpi-guard-ix".into(),
+                detail: e.to_string(),
+            }
+        }
+        let mut out = Vec::new();
+        if enable && self.token_cpi_guard(account)?.is_none() {
+            out.push(
+                token_ix::reallocate(
+                    &token,
+                    account,
+                    &self.payer,
+                    owner,
+                    &[],
+                    &[ExtensionType::CpiGuard],
+                )
+                .map_err(map)?,
+            );
+        }
+        out.push(
+            if enable {
+                cpi_guard::instruction::enable_cpi_guard(&token, account, owner, &[])
+            } else {
+                cpi_guard::instruction::disable_cpi_guard(&token, account, owner, &[])
+            }
+            .map_err(map)?,
+        );
+        Ok(out)
+    }
+
     /// Total supply of a mint, decoded from real account data.
     pub fn mint_supply(&self, mint: &Pubkey) -> Result<u64, ExecError> {
         let acct = self.account(mint)?;

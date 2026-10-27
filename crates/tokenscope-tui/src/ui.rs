@@ -81,17 +81,12 @@ fn fee_label(r: &RunRecord) -> String {
 }
 
 fn action_label(a: Action) -> String {
-    match a {
-        Action::Deposit { amount } => format!("Deposit {{ amount: {amount} }}"),
-        Action::Withdraw => "Withdraw".into(),
-        Action::FreezeDepositor => "FreezeDepositor".into(),
-        Action::ThawDepositor => "ThawDepositor".into(),
-        Action::UnauthorizedWithdraw => "UnauthorizedWithdraw".into(),
-    }
+    // Debug output (`Deposit { amount: 5 }`, `Pause`, ...) is stable and covers every action.
+    format!("{a:?}")
 }
 
 fn snap_line(label: &str, s: &Snapshot) -> String {
-    format!(
+    let mut line = format!(
         "  {label}: vault={} withheld={} recorded={} depositor={} destination={} frozen={} attacker={}",
         s.vault_amount,
         s.vault_withheld.map_or("-".into(), |w| w.to_string()),
@@ -100,7 +95,27 @@ fn snap_line(label: &str, s: &Snapshot) -> String {
         s.destination_balance,
         s.depositor_frozen,
         s.attacker_balance
-    )
+    );
+    // Extension state is shown only when it is in play, to keep baseline output unchanged.
+    if s.vault_frozen {
+        line.push_str(" vault_frozen=true");
+    }
+    if let Some(p) = s.mint_paused {
+        line.push_str(&format!(" paused={p}"));
+    }
+    if s.source_cpi_guard {
+        line.push_str(" cpi_guard=on");
+    }
+    if s.delegate_allowance > 0 {
+        line.push_str(&format!(" delegate_allowance={}", s.delegate_allowance));
+    }
+    if let Some(n) = s.hook_invocations {
+        line.push_str(&format!(" hook_calls={n}"));
+    }
+    if s.issuer_balance > 0 {
+        line.push_str(&format!(" issuer={}", s.issuer_balance));
+    }
+    line
 }
 
 fn para(lines: Vec<Line<'static>>, title: impl Into<String>, scroll: u16) -> Paragraph<'static> {

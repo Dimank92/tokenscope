@@ -110,6 +110,7 @@ mod tests {
                 transfer_fee: None,
             },
             initial_balance: 1,
+            extensions: vec![],
             actions: vec![Action::Deposit { amount: 1 }],
         };
         CorpusCase::new(

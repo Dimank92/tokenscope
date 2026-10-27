@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Action, SCHEMA_VERSION};
 
 /// Real account quantities observed after setup and after each step.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Snapshot {
     /// Token balance of the escrow vault (decoded from the Token-2022 account).
     pub vault_amount: u64,
@@ -21,6 +21,24 @@ pub struct Snapshot {
     pub depositor_frozen: bool,
     /// Token balance of the attacker's account (used by authorization checks).
     pub attacker_balance: u64,
+    /// Whether the escrow vault is frozen.
+    #[serde(default)]
+    pub vault_frozen: bool,
+    /// Whether the mint is paused (`None` without the `Pausable` extension).
+    #[serde(default)]
+    pub mint_paused: Option<bool>,
+    /// Whether CPI Guard is enabled on the depositor's source account.
+    #[serde(default)]
+    pub source_cpi_guard: bool,
+    /// Remaining allowance of the harness delegate on the source account.
+    #[serde(default)]
+    pub delegate_allowance: u64,
+    /// Hook invocations so far (`None` without the `TransferHook` extension).
+    #[serde(default)]
+    pub hook_invocations: Option<u64>,
+    /// Balance of the permanent delegate's own token account.
+    #[serde(default)]
+    pub issuer_balance: u64,
 }
 
 /// Whether an instruction executed successfully.
@@ -121,6 +139,12 @@ mod tests {
             destination_balance: 0,
             depositor_frozen: false,
             attacker_balance: 0,
+            vault_frozen: false,
+            mint_paused: None,
+            source_cpi_guard: false,
+            delegate_allowance: 0,
+            hook_invocations: None,
+            issuer_balance: 0,
         }
     }
 

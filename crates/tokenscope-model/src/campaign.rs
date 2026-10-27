@@ -138,6 +138,7 @@ mod tests {
                 transfer_fee: None,
             },
             initial_balance: n,
+            extensions: vec![],
             actions: vec![Action::Withdraw],
         };
         RunRecord {

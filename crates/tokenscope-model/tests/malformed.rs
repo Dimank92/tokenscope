@@ -25,6 +25,7 @@ fn scenario() -> Scenario {
             }),
         },
         initial_balance: 100,
+        extensions: vec![],
         actions: vec![Action::Deposit { amount: 10 }, Action::UnauthorizedWithdraw],
     }
 }

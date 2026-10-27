@@ -152,6 +152,7 @@ mod tests {
                 transfer_fee: None,
             },
             initial_balance: 5,
+            extensions: vec![],
             actions: vec![Action::Deposit { amount: 5 }],
         };
         let sid = scenario.id();

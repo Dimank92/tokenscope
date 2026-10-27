@@ -50,6 +50,7 @@ fn noisy() -> Scenario {
             }),
         },
         initial_balance: 9_999_999,
+        extensions: vec![],
         actions: vec![
             Action::Withdraw,
             Action::Deposit { amount: 50_000 },

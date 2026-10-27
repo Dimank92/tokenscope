@@ -54,6 +54,7 @@ fn base(
             }),
         },
         initial_balance: balance,
+        extensions: vec![],
         actions,
     }
 }

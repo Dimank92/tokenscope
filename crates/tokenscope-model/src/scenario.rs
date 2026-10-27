@@ -30,6 +30,40 @@ pub struct MintSpec {
     pub transfer_fee: Option<TransferFeeParams>,
 }
 
+/// Token-2022 mint extensions a scenario can enable (besides the transfer fee, which lives in
+/// [`MintSpec`]). Parameters are fixed by the harness (authorities are the harness payer; the
+/// permanent delegate is the harness "issuer"; the hook is the demo hook program).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MintExtension {
+    /// `DefaultAccountState`: new token accounts start frozen (the harness thaws every account
+    /// except the escrow vault during setup, so deposits are blocked until `ThawVault`).
+    DefaultAccountState {
+        /// `true` to freeze new accounts by default.
+        frozen: bool,
+    },
+    /// `Pausable`; the harness payer is the pause authority.
+    Pausable,
+    /// `PermanentDelegate`; the delegate is the harness "issuer".
+    PermanentDelegate,
+    /// `TransferHook` pointing at the demo hook program.
+    TransferHook,
+}
+
+/// Which account an adversarial instruction substitutes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Mismatch {
+    /// A different mint than the one the escrow was created for.
+    WrongMint,
+    /// A token account that is not the escrow's vault.
+    WrongVault,
+    /// A program other than Token-2022 in the token-program position.
+    WrongTokenProgram,
+    /// An address other than the escrow PDA as the vault authority (withdraw only).
+    WrongAuthority,
+}
+
 /// One step a scenario performs against the target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -47,13 +81,61 @@ pub enum Action {
     ThawDepositor,
     /// An attacker (not the depositor) signs a withdrawal. A correct program must reject it.
     UnauthorizedWithdraw,
+    /// The pause authority pauses the mint (`Pausable`).
+    Pause,
+    /// The pause authority resumes the mint (`Pausable`).
+    Resume,
+    /// The depositor's owner enables CPI Guard on the source account (a top-level instruction).
+    EnableCpiGuard,
+    /// The depositor's owner disables CPI Guard on the source account (a top-level instruction).
+    DisableCpiGuard,
+    /// The freeze authority thaws the escrow vault (for `DefaultAccountState`).
+    ThawVault,
+    /// The depositor approves the harness delegate for `amount` on the source account.
+    ApproveDelegate {
+        /// Allowance in token units.
+        amount: u64,
+    },
+    /// The depositor revokes the delegate.
+    RevokeDelegate,
+    /// The delegate moves `amount` from the depositor's source account (a direct token transfer,
+    /// not through the escrow).
+    DelegateTransfer {
+        /// Amount to move.
+        amount: u64,
+    },
+    /// The permanent delegate moves `amount` out of the escrow vault with a direct token transfer.
+    PermanentDelegateDrain {
+        /// Amount to move.
+        amount: u64,
+    },
+    /// A deposit with one account substituted. The escrow must reject it.
+    MismatchedDeposit {
+        /// Which account is substituted.
+        mismatch: Mismatch,
+        /// Nominal amount.
+        amount: u64,
+    },
+    /// A withdrawal with one account substituted. The escrow must reject it.
+    MismatchedWithdraw {
+        /// Which account is substituted.
+        mismatch: Mismatch,
+    },
+    /// Initializing the already-initialized escrow again. The escrow must reject it.
+    ReinitEscrow,
 }
 
 impl Action {
     /// Whether a rejected instruction is the *desired* outcome for this adversarial action, so a
     /// failed step must not be classified as an execution failure.
     pub fn expects_rejection(self) -> bool {
-        matches!(self, Action::UnauthorizedWithdraw)
+        matches!(
+            self,
+            Action::UnauthorizedWithdraw
+                | Action::MismatchedDeposit { .. }
+                | Action::MismatchedWithdraw { .. }
+                | Action::ReinitEscrow
+        )
     }
 }
 
@@ -70,6 +152,9 @@ pub struct Scenario {
     pub target: String,
     /// Mint configuration.
     pub mint: MintSpec,
+    /// Additional mint extensions (omitted from JSON when empty, so older documents and IDs are unchanged).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extensions: Vec<MintExtension>,
     /// Tokens minted to the depositor before the first action.
     pub initial_balance: u64,
     /// Ordered actions.
@@ -146,6 +231,7 @@ mod tests {
                 }),
             },
             initial_balance: 10_000,
+            extensions: vec![],
             actions: vec![Action::Deposit { amount: 1_000 }],
         }
     }
@@ -247,6 +333,7 @@ mod proptests {
                         }),
                     },
                     initial_balance,
+                    extensions: vec![],
                     actions,
                 },
             )

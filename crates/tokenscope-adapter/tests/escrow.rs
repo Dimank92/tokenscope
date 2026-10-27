@@ -19,6 +19,7 @@ fn scenario(target: &str, fee: Option<(u16, u64)>, balance: u64, actions: Vec<Ac
             }),
         },
         initial_balance: balance,
+        extensions: vec![],
         actions,
     }
 }

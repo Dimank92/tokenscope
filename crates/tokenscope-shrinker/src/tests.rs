@@ -16,6 +16,7 @@ fn scenario(actions: Vec<Action>) -> Scenario {
             }),
         },
         initial_balance: 9_999_999,
+        extensions: vec![],
         actions,
     }
 }
@@ -168,6 +169,7 @@ mod prop {
                     }),
                 },
                 initial_balance,
+                extensions: vec![],
                 actions,
             })
     }

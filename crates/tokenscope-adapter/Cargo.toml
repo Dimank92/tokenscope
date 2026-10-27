@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 solana-instruction = "3.2"
 solana-pubkey = { version = "4.1", features = ["curve25519"] }
+solana-system-interface = { version = "3.3", features = ["bincode"] }
 spl-token-2022-interface = "=3.1.2"
 thiserror.workspace = true
 tokenscope-executor = { path = "../tokenscope-executor" }

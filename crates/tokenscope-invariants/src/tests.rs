@@ -11,9 +11,7 @@ fn snap(vault: u64, withheld: Option<u64>, recorded: u64, depositor: u64) -> Sna
         vault_withheld: withheld,
         escrow_recorded: recorded,
         depositor_balance: depositor,
-        destination_balance: 0,
-        depositor_frozen: false,
-        attacker_balance: 0,
+        ..Snapshot::default()
     }
 }
 
@@ -62,6 +60,7 @@ fn scenario() -> Scenario {
             transfer_fee: None,
         },
         initial_balance: 10_000,
+        extensions: vec![],
         actions: vec![Action::Deposit { amount: 1_000 }],
     }
 }

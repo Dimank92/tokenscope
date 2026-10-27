@@ -16,6 +16,7 @@ fn scenario(name: &str) -> Scenario {
             transfer_fee: None,
         },
         initial_balance: 5,
+        extensions: vec![],
         actions: vec![Action::Deposit { amount: 5 }],
     }
 }
