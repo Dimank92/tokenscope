@@ -194,3 +194,64 @@ mod prop {
         }
     }
 }
+
+mod extensions {
+    use tokenscope_model::{Action, MintExtension, MintSpec, SCHEMA_VERSION, Scenario};
+
+    use crate::*;
+
+    fn noisy() -> Scenario {
+        Scenario {
+            schema_version: SCHEMA_VERSION,
+            name: "e".into(),
+            seed: 1,
+            target: "t".into(),
+            mint: MintSpec {
+                decimals: 6,
+                transfer_fee: None,
+            },
+            initial_balance: 500,
+            extensions: vec![
+                MintExtension::Pausable,
+                MintExtension::PermanentDelegate,
+                MintExtension::TransferHook,
+            ],
+            actions: vec![
+                Action::Pause,
+                Action::Deposit { amount: 900 },
+                Action::PermanentDelegateDrain { amount: 700 },
+                Action::Resume,
+            ],
+        }
+    }
+
+    // Failure: a permanent delegate exists and a drain of at least 10 follows a deposit.
+    fn pred(s: &Scenario) -> bool {
+        let drained = s
+            .actions
+            .iter()
+            .position(|a| matches!(a, Action::PermanentDelegateDrain { amount } if *amount >= 10));
+        let deposited = s
+            .actions
+            .iter()
+            .position(|a| matches!(a, Action::Deposit { .. }));
+        s.extensions.contains(&MintExtension::PermanentDelegate)
+            && matches!((deposited, drained), (Some(d), Some(x)) if d < x)
+    }
+
+    #[test]
+    fn unneeded_extensions_actions_and_amounts_are_removed() {
+        let r = shrink(&noisy(), ShrinkConfig::default(), pred).unwrap();
+        let m = &r.minimized;
+        assert_eq!(m.extensions, vec![MintExtension::PermanentDelegate]);
+        assert_eq!(
+            m.actions,
+            vec![
+                Action::Deposit { amount: 0 },
+                Action::PermanentDelegateDrain { amount: 10 }
+            ]
+        );
+        assert_eq!(m.initial_balance, 0);
+        assert!(pred(m) && m.validate().is_ok());
+    }
+}

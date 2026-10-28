@@ -11,11 +11,11 @@
 //! * the returned scenario satisfies the predicate (it is re-checked at the end).
 //!
 //! Strategies, applied to a fixpoint: keep a single action, delete actions, shrink numeric inputs
-//! (deposit amounts, initial balance, fee basis points, maximum fee, decimals) and drop the
-//! transfer-fee extension.
+//! (every action amount, initial balance, fee basis points, maximum fee, decimals), drop mint
+//! extensions the failure does not need, and drop the transfer-fee extension.
 
 use thiserror::Error;
-use tokenscope_model::{Action, ModelError, Scenario, TransferFeeParams};
+use tokenscope_model::{ModelError, Scenario, TransferFeeParams};
 
 /// Shrinking limits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,14 +202,15 @@ fn delete_actions<F: FnMut(&Scenario) -> bool>(ctx: &mut Ctx<F>, mut cur: Scenar
 
 fn shrink_amounts<F: FnMut(&Scenario) -> bool>(ctx: &mut Ctx<F>, mut cur: Scenario) -> Scenario {
     for i in 0..cur.actions.len() {
-        if let Action::Deposit { amount } = cur.actions[i] {
+        if let Some(amount) = cur.actions[i].amount() {
             let base = cur.clone();
+            let action = cur.actions[i];
             let best = ctx.shrink_u64(amount, |v| {
                 let mut s = base.clone();
-                s.actions[i] = Action::Deposit { amount: v };
+                s.actions[i] = action.with_amount(v);
                 s
             });
-            cur.actions[i] = Action::Deposit { amount: best };
+            cur.actions[i] = action.with_amount(best);
         }
     }
     let base = cur.clone();
@@ -222,6 +223,16 @@ fn shrink_amounts<F: FnMut(&Scenario) -> bool>(ctx: &mut Ctx<F>, mut cur: Scenar
 }
 
 fn shrink_config<F: FnMut(&Scenario) -> bool>(ctx: &mut Ctx<F>, mut cur: Scenario) -> Scenario {
+    // Drop mint extensions that the failure does not need.
+    let mut i = cur.extensions.len();
+    while i > 0 {
+        i -= 1;
+        let mut cand = cur.clone();
+        cand.extensions.remove(i);
+        if ctx.accepts(&cand) {
+            cur = cand;
+        }
+    }
     if cur.mint.decimals != 0 {
         let mut cand = cur.clone();
         cand.mint.decimals = 0;

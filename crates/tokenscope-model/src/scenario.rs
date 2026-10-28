@@ -126,6 +126,35 @@ pub enum Action {
 }
 
 impl Action {
+    /// The token amount this action carries, if any.
+    pub fn amount(self) -> Option<u64> {
+        match self {
+            Action::Deposit { amount }
+            | Action::ApproveDelegate { amount }
+            | Action::DelegateTransfer { amount }
+            | Action::PermanentDelegateDrain { amount }
+            | Action::MismatchedDeposit { amount, .. } => Some(amount),
+            _ => None,
+        }
+    }
+
+    /// The same action with its amount replaced (unchanged for actions without an amount).
+    pub fn with_amount(self, value: u64) -> Action {
+        match self {
+            Action::Deposit { .. } => Action::Deposit { amount: value },
+            Action::ApproveDelegate { .. } => Action::ApproveDelegate { amount: value },
+            Action::DelegateTransfer { .. } => Action::DelegateTransfer { amount: value },
+            Action::PermanentDelegateDrain { .. } => {
+                Action::PermanentDelegateDrain { amount: value }
+            }
+            Action::MismatchedDeposit { mismatch, .. } => Action::MismatchedDeposit {
+                mismatch,
+                amount: value,
+            },
+            other => other,
+        }
+    }
+
     /// Whether a rejected instruction is the *desired* outcome for this adversarial action, so a
     /// failed step must not be classified as an execution failure.
     pub fn expects_rejection(self) -> bool {
@@ -215,6 +244,33 @@ impl Scenario {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn amount_accessors_cover_exactly_the_amount_carrying_actions() {
+        use super::*;
+        for a in [
+            Action::Deposit { amount: 5 },
+            Action::ApproveDelegate { amount: 5 },
+            Action::DelegateTransfer { amount: 5 },
+            Action::PermanentDelegateDrain { amount: 5 },
+            Action::MismatchedDeposit {
+                mismatch: Mismatch::WrongVault,
+                amount: 5,
+            },
+        ] {
+            assert_eq!(a.amount(), Some(5));
+            assert_eq!(a.with_amount(9).amount(), Some(9));
+        }
+        for a in [
+            Action::Withdraw,
+            Action::Pause,
+            Action::ReinitEscrow,
+            Action::ThawVault,
+        ] {
+            assert_eq!(a.amount(), None);
+            assert_eq!(a.with_amount(9), a);
+        }
+    }
+
     use super::*;
 
     fn sample() -> Scenario {

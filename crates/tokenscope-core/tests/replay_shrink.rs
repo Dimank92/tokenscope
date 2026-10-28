@@ -188,3 +188,50 @@ fn corpus_reports_bad_files_and_missing_cases() {
     std::fs::write(dir.path().join("broken.json"), "{not json").unwrap();
     assert!(matches!(corpus.list(), Err(CorpusError::Invalid { .. })));
 }
+
+#[test]
+fn minimization_of_an_extension_finding_drops_unneeded_extensions_and_actions() {
+    use tokenscope_model::MintExtension;
+    let engine = Engine::new();
+    let mut s = noisy(FIXED);
+    s.mint.transfer_fee = None;
+    s.initial_balance = 5_000;
+    s.extensions = vec![MintExtension::Pausable, MintExtension::PermanentDelegate];
+    s.actions = vec![
+        Action::Pause,
+        Action::Resume,
+        Action::Deposit { amount: 3_000 },
+        Action::PermanentDelegateDrain { amount: 2_000 },
+        Action::Withdraw,
+    ];
+    let run = engine.run_scenario(&s);
+    let finding = run
+        .findings
+        .into_iter()
+        .find(|f| f.invariant_id == "INV-CUST-001")
+        .expect("custody finding");
+    let (min, report) = engine.minimize(&finding, ShrinkConfig::default()).unwrap();
+    let m = min.minimized.unwrap();
+    assert_eq!(
+        m.extensions,
+        vec![MintExtension::PermanentDelegate],
+        "Pausable was irrelevant"
+    );
+    assert_eq!(
+        m.actions,
+        vec![
+            Action::Deposit { amount: 1 },
+            Action::PermanentDelegateDrain { amount: 1 }
+        ]
+    );
+    assert_eq!(m.initial_balance, 1);
+    assert!(!report.budget_exhausted, "{report:?}");
+    // Same failure on the minimized scenario, validated by real execution.
+    assert!(
+        engine
+            .run_scenario(&m)
+            .findings
+            .iter()
+            .any(|f| f.invariant_id == "INV-CUST-001")
+    );
+}
