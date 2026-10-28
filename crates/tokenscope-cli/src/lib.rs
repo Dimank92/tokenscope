@@ -66,7 +66,10 @@ pub enum Command {
         /// Number of generated scenarios.
         #[arg(long, default_value_t = 20, conflicts_with = "config")]
         count: usize,
-        /// Skip the built-in suite.
+        /// Built-in scenarios: `core` (fee accounting), `extensions`, `all`, or `none`.
+        #[arg(long, default_value = "core", conflicts_with = "config")]
+        suite: String,
+        /// Shorthand for `--suite none`.
         #[arg(long, conflicts_with = "config")]
         no_suite: bool,
         /// JSON run configuration (see FORMAT.md).
@@ -114,7 +117,10 @@ pub enum Command {
         /// Number of generated scenarios.
         #[arg(long, default_value_t = 0)]
         count: usize,
-        /// Skip the built-in suite.
+        /// Built-in scenarios: `core` (fee accounting), `extensions`, `all`, or `none`.
+        #[arg(long, default_value = "core")]
+        suite: String,
+        /// Shorthand for `--suite none`.
         #[arg(long)]
         no_suite: bool,
         /// Artifact directory used by the export key (default: `tokenscope-out`).

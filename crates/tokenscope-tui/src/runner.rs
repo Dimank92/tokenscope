@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::mpsc, thread};
 
 use tokenscope_core::Engine;
 use tokenscope_model::{Campaign, RunRecord, Scenario};
-use tokenscope_scenarios::{builtin_suite, generate};
+use tokenscope_scenarios::{SuiteSelection, generate};
 
 /// Progress events from the worker.
 #[derive(Debug)]
@@ -21,8 +21,13 @@ pub enum RunEvent {
 }
 
 /// Scenarios a campaign runs: the built-in suite (optional) plus seeded ones.
-pub fn build_scenarios(target: &str, seed: u64, count: usize, suite: bool) -> Vec<Scenario> {
-    let mut s = if suite { builtin_suite(target) } else { vec![] };
+pub fn build_scenarios(
+    target: &str,
+    seed: u64,
+    count: usize,
+    suite: SuiteSelection,
+) -> Vec<Scenario> {
+    let mut s = suite.scenarios(target);
     s.extend(generate(seed, count, target));
     s
 }
@@ -33,7 +38,7 @@ pub fn spawn(
     target: String,
     seed: u64,
     count: usize,
-    suite: bool,
+    suite: SuiteSelection,
     program_dir: Option<PathBuf>,
 ) -> mpsc::Receiver<RunEvent> {
     let (tx, rx) = mpsc::channel();

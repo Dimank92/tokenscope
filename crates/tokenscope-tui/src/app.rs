@@ -7,6 +7,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokenscope_invariants::catalog;
 use tokenscope_model::{Campaign, CorpusCase, Expectation, Finding, RunRecord};
 use tokenscope_report::Artifacts;
+use tokenscope_scenarios::SuiteSelection;
 
 use crate::runner::RunEvent;
 
@@ -87,8 +88,8 @@ pub struct Options {
     pub seed: u64,
     /// Number of generated scenarios.
     pub count: usize,
-    /// Whether the built-in suite runs.
-    pub suite: bool,
+    /// Which built-in scenarios run.
+    pub suite: SuiteSelection,
     /// Artifact output directory.
     pub out_dir: PathBuf,
     /// Corpus directory.

@@ -78,20 +78,33 @@ pub const CONS_001: InvariantDef = InvariantDef {
 /// Authorization: unauthorized actors cause no prohibited transition.
 pub const AUTH_001: InvariantDef = InvariantDef {
     id: "INV-AUTH-001",
-    name: "Unauthorized withdrawal is rejected and changes nothing",
-    description: "A withdrawal signed by someone other than the escrow's depositor must fail, must leave every observed quantity unchanged, and must not credit the attacker.",
+    name: "Adversarial operations are rejected and change nothing",
+    description: "An operation that must be rejected (a withdrawal signed by a non-depositor, a deposit or withdrawal with a substituted mint, vault, token program or vault authority, or re-initialization of the escrow) must fail, must leave every observed quantity unchanged, and must not credit the attacker.",
     preconditions: &[
-        "the step is an unauthorized withdrawal (attacker signs in the depositor's position)",
+        "the step's action is one the escrow is required to reject (Action::expects_rejection)",
     ],
     expected: "step failed && after == before && attacker_balance unchanged",
     exceptions: &[
-        "only the depositor-signature check is modeled; other authority paths are not exercised",
+        "only the depositor-signature, account-identity and initialization checks are modeled; other authority paths (delegates, forged PDAs) are not exercised",
+    ],
+};
+
+/// Custody: only the depositor's withdrawal may reduce the vault.
+pub const CUST_001: InvariantDef = InvariantDef {
+    id: "INV-CUST-001",
+    name: "The vault only shrinks through an authorized withdrawal",
+    description: "A successful step other than the depositor's Withdraw must not decrease the vault's token balance. This encodes the escrow's assumption that only its PDA can move vault tokens; mint extensions such as PermanentDelegate break that assumption.",
+    preconditions: &["the step succeeded", "the step's action is not Withdraw"],
+    expected: "vault_amount_after >= vault_amount_before",
+    exceptions: &[
+        "Withdraw by the depositor is the authorized path and is excluded",
+        "interest-bearing or scaled amounts are not modeled; only raw token amounts are compared",
     ],
 };
 
 /// All invariants implemented by this crate.
-pub fn catalog() -> [InvariantDef; 5] {
-    [ACCT_001, SOLV_001, ATOM_001, CONS_001, AUTH_001]
+pub fn catalog() -> [InvariantDef; 6] {
+    [ACCT_001, SOLV_001, ATOM_001, CONS_001, AUTH_001, CUST_001]
 }
 
 /// Result of evaluating one invariant on one step.
@@ -201,41 +214,65 @@ fn cons_001(step: &StepRecord) -> Verdict {
 }
 
 fn auth_001(step: &StepRecord) -> Verdict {
-    if step.action != Action::UnauthorizedWithdraw {
+    if !step.action.expects_rejection() {
         return Verdict::NotApplicable;
     }
     if step.status == StepStatus::Ok {
         return Verdict::Violated {
             observed: format!(
-                "unauthorized withdrawal succeeded: attacker balance {} -> {}, vault {} -> {}",
+                "{:?} succeeded but must be rejected: attacker balance {} -> {}, vault {} -> {}, recorded {} -> {}",
+                step.action,
                 step.before.attacker_balance,
                 step.after.attacker_balance,
                 step.before.vault_amount,
-                step.after.vault_amount
+                step.after.vault_amount,
+                step.before.escrow_recorded,
+                step.after.escrow_recorded
             ),
         };
     }
     if step.before != step.after {
         return Verdict::Violated {
             observed: format!(
-                "rejected unauthorized withdrawal still changed state: before={:?} after={:?}",
-                step.before, step.after
+                "rejected {:?} still changed state: before={:?} after={:?}",
+                step.action, step.before, step.after
             ),
         };
     }
     Verdict::Held
 }
 
+fn cust_001(step: &StepRecord) -> Verdict {
+    if step.status != StepStatus::Ok || step.action == Action::Withdraw {
+        return Verdict::NotApplicable;
+    }
+    if step.after.vault_amount >= step.before.vault_amount {
+        Verdict::Held
+    } else {
+        Verdict::Violated {
+            observed: format!(
+                "{:?} reduced the vault from {} to {} without an authorized withdrawal (issuer balance {} -> {})",
+                step.action,
+                step.before.vault_amount,
+                step.after.vault_amount,
+                step.before.issuer_balance,
+                step.after.issuer_balance
+            ),
+        }
+    }
+}
+
 type Check = (&'static str, fn(&StepRecord) -> Verdict);
 
 /// Evaluate every invariant on every step of `trace`, in step then catalog order.
 pub fn evaluate(trace: &ExecutionTrace) -> Vec<Evaluation> {
-    let checks: [Check; 5] = [
+    let checks: [Check; 6] = [
         (ACCT_001.id, acct_001),
         (SOLV_001.id, solv_001),
         (ATOM_001.id, atom_001),
         (CONS_001.id, cons_001),
         (AUTH_001.id, auth_001),
+        (CUST_001.id, cust_001),
     ];
     let mut out = Vec::new();
     for step in &trace.steps {
@@ -320,6 +357,10 @@ fn severity_for(id: &str) -> (Severity, &'static str) {
         "INV-ACCT-001" => (
             Severity::Medium,
             "The escrow over- or under-credits relative to tokens actually held. Impact depends on how credits are later redeemed; this check alone does not prove exploitability.",
+        ),
+        "INV-CUST-001" => (
+            Severity::High,
+            "Tokens left the vault without the escrow's authorization. This is an integration-assumption failure caused by the mint's configuration (for example a permanent delegate), not necessarily a program bug; whether it is exploitable depends on who controls that authority.",
         ),
         "INV-AUTH-001" => (
             Severity::High,

@@ -465,3 +465,69 @@ fn tui_snapshot_corrected_target_has_no_findings_and_inputs_are_validated() {
     assert_eq!(help.code, 0);
     assert!(help.stdout.contains("Shortcuts"));
 }
+
+#[test]
+fn suite_selection_extensions_and_all_and_validation() {
+    let dir = tempfile::tempdir().unwrap();
+    // The corrected escrow still has a custody finding with a permanent delegate (documented).
+    let o = tokenscope(&[
+        "run",
+        "--target",
+        FIXED,
+        "--suite",
+        "extensions",
+        "--count",
+        "0",
+        "--out",
+        s(dir.path()),
+    ]);
+    assert_eq!(o.code, 1, "{}{}", o.stdout, o.stderr);
+    assert!(
+        o.stdout.contains("INV-CUST-001") && o.stdout.contains("executed 10 "),
+        "{}",
+        o.stdout
+    );
+    assert!(
+        !o.stdout.contains("INV-ACCT-001"),
+        "no fee-accounting finding on the corrected escrow"
+    );
+
+    let all = tokenscope(&[
+        "run",
+        "--target",
+        VULN,
+        "--suite",
+        "all",
+        "--count",
+        "0",
+        "--out",
+        s(dir.path()),
+    ]);
+    assert_eq!(all.code, 1);
+    assert!(all.stdout.contains("executed 24 "), "{}", all.stdout);
+
+    assert_eq!(
+        tokenscope(&["run", "--target", VULN, "--suite", "everything"]).code,
+        2
+    );
+    let cfg = dir.path().join("c.json");
+    fs::write(
+        &cfg,
+        r#"{"schema_version":1,"target":"demo-escrow-corrected","suite":"nope"}"#,
+    )
+    .unwrap();
+    assert_eq!(tokenscope(&["run", "--config", s(&cfg)]).code, 2);
+    fs::write(
+        &cfg,
+        r#"{"schema_version":1,"target":"demo-escrow-corrected","suite":"extensions"}"#,
+    )
+    .unwrap();
+    let o = tokenscope(&["run", "--config", s(&cfg), "--out", s(dir.path())]);
+    assert_eq!(o.code, 1);
+    assert!(o.stdout.contains("executed 10 "));
+    let inspect = tokenscope(&["inspect"]);
+    assert!(
+        inspect.stdout.contains("permanent-delegate-drains-vault")
+            && inspect.stdout.contains("INV-CUST-001")
+    );
+}

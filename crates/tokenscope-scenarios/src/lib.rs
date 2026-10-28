@@ -6,7 +6,8 @@
 //!   the same seed always yields the same scenarios on every platform.
 
 use tokenscope_model::{
-    Action, MAX_ACTIONS, MintSpec, SCHEMA_VERSION, Scenario, TransferFeeParams,
+    Action, MAX_ACTIONS, MintExtension, MintSpec, Mismatch, SCHEMA_VERSION, Scenario,
+    TransferFeeParams,
 };
 
 /// SplitMix64 pseudo-random generator (Steele, Lea, Flood 2014). Deterministic and portable.
@@ -56,6 +57,20 @@ fn base(
         initial_balance: balance,
         extensions: vec![],
         actions,
+    }
+}
+
+fn ext(
+    name: &str,
+    target: &str,
+    fee: Option<(u16, u64)>,
+    extensions: Vec<MintExtension>,
+    balance: u64,
+    actions: Vec<Action>,
+) -> Scenario {
+    Scenario {
+        extensions,
+        ..base(name, target, fee, balance, actions)
     }
 }
 
@@ -163,6 +178,164 @@ pub fn builtin_suite(target: &str) -> Vec<Scenario> {
     ]
 }
 
+/// Which built-in scenarios a campaign runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SuiteSelection {
+    /// No built-in scenarios (only generated ones).
+    None,
+    /// The original fee-accounting suite ([`builtin_suite`]).
+    Core,
+    /// Extension, authorization and boundary scenarios ([`extension_suite`]).
+    Extensions,
+    /// Both suites.
+    All,
+}
+
+impl SuiteSelection {
+    /// Parse `none | core | extensions | all`.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(Self::None),
+            "core" => Some(Self::Core),
+            "extensions" => Some(Self::Extensions),
+            "all" => Some(Self::All),
+            _ => Option::None,
+        }
+    }
+
+    /// The selected scenarios for `target`.
+    pub fn scenarios(self, target: &str) -> Vec<Scenario> {
+        let mut v = Vec::new();
+        if matches!(self, Self::Core | Self::All) {
+            v.extend(builtin_suite(target));
+        }
+        if matches!(self, Self::Extensions | Self::All) {
+            v.extend(extension_suite(target));
+        }
+        v
+    }
+}
+
+/// Extension, authorization and boundary scenarios. Note that `permanent-delegate-drains-vault`
+/// is a finding on *both* escrow flavors: neither checks the mint's extensions.
+pub fn extension_suite(target: &str) -> Vec<Scenario> {
+    let t = target;
+    let max = u64::MAX;
+    vec![
+        ext(
+            "pausable-deposit-gated",
+            t,
+            None,
+            vec![MintExtension::Pausable],
+            10_000,
+            vec![Action::Pause, dep(1_000), Action::Resume, dep(1_000)],
+        ),
+        base(
+            "cpi-guard-blocks-escrow-deposit",
+            t,
+            None,
+            10_000,
+            vec![
+                Action::EnableCpiGuard,
+                dep(1_000),
+                Action::DisableCpiGuard,
+                dep(1_000),
+            ],
+        ),
+        ext(
+            "default-frozen-vault-blocks-deposit",
+            t,
+            None,
+            vec![MintExtension::DefaultAccountState { frozen: true }],
+            10_000,
+            vec![dep(1_000), Action::ThawVault, dep(1_000)],
+        ),
+        ext(
+            "permanent-delegate-drains-vault",
+            t,
+            None,
+            vec![MintExtension::PermanentDelegate],
+            10_000,
+            vec![dep(1_000), Action::PermanentDelegateDrain { amount: 500 }],
+        ),
+        base(
+            "delegate-allowance-lifecycle",
+            t,
+            None,
+            10_000,
+            vec![
+                Action::ApproveDelegate { amount: 300 },
+                Action::DelegateTransfer { amount: 200 },
+                Action::DelegateTransfer { amount: 200 },
+                Action::RevokeDelegate,
+            ],
+        ),
+        ext(
+            "transfer-hook-mint-unsupported-by-escrow",
+            t,
+            None,
+            vec![MintExtension::TransferHook],
+            10_000,
+            vec![dep(1_000)],
+        ),
+        base(
+            "mismatched-accounts-rejected",
+            t,
+            None,
+            10_000,
+            vec![
+                dep(1_000),
+                Action::MismatchedDeposit {
+                    mismatch: Mismatch::WrongMint,
+                    amount: 5,
+                },
+                Action::MismatchedDeposit {
+                    mismatch: Mismatch::WrongVault,
+                    amount: 5,
+                },
+                Action::MismatchedDeposit {
+                    mismatch: Mismatch::WrongTokenProgram,
+                    amount: 5,
+                },
+                Action::MismatchedWithdraw {
+                    mismatch: Mismatch::WrongMint,
+                },
+                Action::MismatchedWithdraw {
+                    mismatch: Mismatch::WrongVault,
+                },
+                Action::MismatchedWithdraw {
+                    mismatch: Mismatch::WrongTokenProgram,
+                },
+                Action::MismatchedWithdraw {
+                    mismatch: Mismatch::WrongAuthority,
+                },
+                Action::ReinitEscrow,
+            ],
+        ),
+        base(
+            "repeated-withdrawals",
+            t,
+            None,
+            10_000,
+            vec![dep(1_000), Action::Withdraw, Action::Withdraw],
+        ),
+        base(
+            "u64-max-deposit-no-fee",
+            t,
+            None,
+            u64::MAX,
+            vec![dep(u64::MAX), Action::Withdraw],
+        ),
+        base(
+            "u64-max-deposit-with-fee",
+            t,
+            Some((100, max)),
+            u64::MAX,
+            vec![dep(u64::MAX)],
+        ),
+    ]
+}
+
 /// Generate `count` scenarios for `target` from `seed`. Scenario `i` records the seed it was
 /// derived from (`seed` mixed with `i`), so it can be regenerated independently.
 pub fn generate(seed: u64, count: usize, target: &str) -> Vec<Scenario> {
@@ -259,5 +432,35 @@ mod proptests {
             for s in &a { prop_assert!(s.validate().is_ok()); }
             prop_assert_eq!(a, generate(seed, count, "demo-escrow-vulnerable"));
         }
+    }
+}
+
+#[cfg(test)]
+mod suite_tests {
+    use super::*;
+
+    #[test]
+    fn suites_are_valid_disjoint_and_selectable() {
+        let core = builtin_suite("t");
+        let ext = extension_suite("t");
+        assert_eq!(
+            core.len(),
+            14,
+            "the original suite is unchanged (IDs depend on it)"
+        );
+        assert_eq!(ext.len(), 10);
+        let mut ids: Vec<_> = core.iter().chain(&ext).map(Scenario::id).collect();
+        for s in core.iter().chain(&ext) {
+            s.validate().unwrap();
+        }
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), 24, "no duplicate scenarios across suites");
+        assert_eq!(SuiteSelection::All.scenarios("t").len(), 24);
+        assert_eq!(SuiteSelection::Core.scenarios("t"), core);
+        assert_eq!(SuiteSelection::Extensions.scenarios("t"), ext);
+        assert!(SuiteSelection::None.scenarios("t").is_empty());
+        assert_eq!(SuiteSelection::parse("all"), Some(SuiteSelection::All));
+        assert_eq!(SuiteSelection::parse("everything"), None);
     }
 }

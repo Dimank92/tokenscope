@@ -19,7 +19,7 @@ use tokenscope_model::{
     Campaign, CorpusCase, Expectation, Finding, ModelError, OutcomeClass, Scenario,
 };
 use tokenscope_report::{render_json, render_text, write_artifacts};
-use tokenscope_scenarios::{builtin_suite, generate};
+use tokenscope_scenarios::{SuiteSelection, builtin_suite, extension_suite, generate};
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError};
 
 use crate::{
@@ -89,6 +89,22 @@ fn corpus_dir(c: Option<PathBuf>) -> PathBuf {
     c.unwrap_or_else(|| PathBuf::from(DEFAULT_CORPUS))
 }
 
+fn parse_suite(name: &str) -> Result<SuiteSelection> {
+    SuiteSelection::parse(name).ok_or_else(|| {
+        usage(format!(
+            "unknown suite `{name}`; expected none, core, extensions or all"
+        ))
+    })
+}
+
+fn suite_arg(suite: &str, no_suite: bool) -> Result<SuiteSelection> {
+    if no_suite {
+        Ok(SuiteSelection::None)
+    } else {
+        parse_suite(suite)
+    }
+}
+
 fn resolve_targets(target: &str) -> Result<Vec<String>> {
     if target == "demo-escrow" {
         return Ok(TARGETS.iter().map(|t| (*t).to_string()).collect());
@@ -114,6 +130,9 @@ struct RunConfig {
     generated: usize,
     #[serde(default = "yes")]
     builtin_suite: bool,
+    /// `none | core | extensions | all`; when present it overrides `builtin_suite`.
+    #[serde(default)]
+    suite: Option<String>,
 }
 
 fn yes() -> bool {
@@ -128,6 +147,7 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             target,
             seed,
             count,
+            suite,
             no_suite,
             config,
             out: out_path,
@@ -144,11 +164,16 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
                             c.schema_version
                         )));
                     }
-                    (c.target, c.seed, c.generated, c.builtin_suite)
+                    let sel = match &c.suite {
+                        Some(name) => parse_suite(name)?,
+                        None if c.builtin_suite => SuiteSelection::Core,
+                        None => SuiteSelection::None,
+                    };
+                    (c.target, c.seed, c.generated, sel)
                 }
                 None => {
                     let t = target.ok_or_else(|| usage("`run` needs --target or --config"))?;
-                    (t, seed, count, !no_suite)
+                    (t, seed, count, suite_arg(&suite, no_suite)?)
                 }
             };
             run_campaigns(&target, seed, count, suite, out_dir(out_path), out)
@@ -168,6 +193,7 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             target,
             seed,
             count,
+            suite,
             no_suite,
             out: out_path,
             corpus,
@@ -177,7 +203,7 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
                 target,
                 seed,
                 count,
-                suite: !no_suite,
+                suite: suite_arg(&suite, no_suite)?,
                 out_dir: out_dir(out_path),
                 corpus_dir: corpus_dir(corpus),
                 program_dir: None,
@@ -304,8 +330,17 @@ fn inspect(target: Option<String>, out: &mut dyn Write) -> Result<i32> {
         )?;
         writeln!(
             out,
-            "  built-in scenarios: {}",
+            "  core suite: {}",
             builtin_suite(t)
+                .iter()
+                .map(|s| s.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )?;
+        writeln!(
+            out,
+            "  extensions suite: {}",
+            extension_suite(t)
                 .iter()
                 .map(|s| s.name.clone())
                 .collect::<Vec<_>>()
@@ -347,7 +382,7 @@ fn run_campaigns(
     target: &str,
     seed: u64,
     count: usize,
-    suite: bool,
+    suite: SuiteSelection,
     out_path: PathBuf,
     out: &mut dyn Write,
 ) -> Result<i32> {
@@ -357,7 +392,7 @@ fn run_campaigns(
         )));
     }
     let targets = resolve_targets(target)?;
-    if !suite && count == 0 {
+    if suite == SuiteSelection::None && count == 0 {
         return Err(usage(
             "nothing to run: enable the built-in suite or request generated scenarios",
         ));
@@ -365,7 +400,7 @@ fn run_campaigns(
     let engine = Engine::new();
     let mut code = EXIT_OK;
     for t in targets {
-        let mut scenarios: Vec<Scenario> = if suite { builtin_suite(&t) } else { vec![] };
+        let mut scenarios: Vec<Scenario> = suite.scenarios(&t);
         scenarios.extend(generate(seed, count, &t));
         let campaign = engine.run_campaign(&t, seed, &scenarios);
         let artifacts =
@@ -561,7 +596,7 @@ fn tui(
             opts.count
         )));
     }
-    if !opts.suite && opts.count == 0 {
+    if opts.suite == SuiteSelection::None && opts.count == 0 {
         return Err(usage(
             "nothing to run: enable the built-in suite or request generated scenarios",
         ));

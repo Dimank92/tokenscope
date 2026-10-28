@@ -328,3 +328,92 @@ fn ordinary_failed_steps_still_classify_as_execution_failures() {
     let t = trace(vec![step(0, DEP, b, b, false)]);
     assert_eq!(classify(&t, &evaluate(&t)), OutcomeClass::ExecutionFailure);
 }
+
+fn step_of(action: Action, ok: bool, before: Snapshot, after: Snapshot) -> StepRecord {
+    step(0, action, before, after, ok)
+}
+
+#[test]
+fn cust_001_flags_a_vault_decrease_outside_withdraw() {
+    let before = snap(1_000, None, 1_000, 9_000);
+    let mut after = before;
+    after.vault_amount = 400;
+    after.issuer_balance = 600;
+    let drain = step_of(
+        Action::PermanentDelegateDrain { amount: 600 },
+        true,
+        before,
+        after,
+    );
+    match &verdicts(&trace(vec![drain]), "INV-CUST-001")[0] {
+        Verdict::Violated { observed } => assert!(observed.contains("1000 to 400"), "{observed}"),
+        v => panic!("expected violation, got {v:?}"),
+    }
+}
+
+#[test]
+fn cust_001_excludes_withdraw_and_failed_steps_and_holds_for_growth() {
+    let before = snap(1_000, None, 1_000, 9_000);
+    let drained = snap(0, None, 0, 9_000);
+    let w = step_of(Action::Withdraw, true, before, drained);
+    assert_eq!(
+        verdicts(&trace(vec![w]), "INV-CUST-001"),
+        vec![Verdict::NotApplicable]
+    );
+    let failed = step_of(
+        Action::PermanentDelegateDrain { amount: 5 },
+        false,
+        before,
+        before,
+    );
+    assert_eq!(
+        verdicts(&trace(vec![failed]), "INV-CUST-001"),
+        vec![Verdict::NotApplicable]
+    );
+    assert_eq!(
+        verdicts(&trace(vec![corrected_deposit()]), "INV-CUST-001"),
+        vec![Verdict::Held]
+    );
+}
+
+#[test]
+fn auth_001_covers_every_must_reject_action() {
+    use tokenscope_model::Mismatch;
+    let b = snap(1_000, None, 1_000, 9_000);
+    let must_reject = [
+        Action::UnauthorizedWithdraw,
+        Action::MismatchedDeposit {
+            mismatch: Mismatch::WrongVault,
+            amount: 5,
+        },
+        Action::MismatchedWithdraw {
+            mismatch: Mismatch::WrongAuthority,
+        },
+        Action::ReinitEscrow,
+    ];
+    for a in must_reject {
+        assert!(a.expects_rejection());
+        let rejected = trace(vec![step_of(a, false, b, b)]);
+        assert_eq!(
+            verdicts(&rejected, "INV-AUTH-001"),
+            vec![Verdict::Held],
+            "{a:?}"
+        );
+        assert_eq!(
+            classify(&rejected, &evaluate(&rejected)),
+            OutcomeClass::Pass,
+            "{a:?}"
+        );
+        let mut changed = b;
+        changed.escrow_recorded = 0;
+        let leaked = trace(vec![step_of(a, true, b, changed)]);
+        assert!(
+            matches!(
+                verdicts(&leaked, "INV-AUTH-001")[0],
+                Verdict::Violated { .. }
+            ),
+            "{a:?}"
+        );
+    }
+    assert!(!Action::Deposit { amount: 1 }.expects_rejection());
+}

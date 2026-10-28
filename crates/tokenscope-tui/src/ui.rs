@@ -590,7 +590,7 @@ fn help(frame: &mut Frame, app: &App, area: Rect) {
             "  seed / generated count",
             format!("{} / {}", o.seed, o.count),
         ),
-        kv("  built-in suite", o.suite.to_string()),
+        kv("  built-in suite", format!("{:?}", o.suite)),
         kv("  output dir", o.out_dir.display().to_string()),
         kv("  corpus dir", o.corpus_dir.display().to_string()),
         plain(""),

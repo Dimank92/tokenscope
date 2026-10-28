@@ -22,7 +22,7 @@ fn opts(target: &str, out: PathBuf) -> Options {
         target: target.into(),
         seed: 0,
         count: 0,
-        suite: true,
+        suite: tokenscope_scenarios::SuiteSelection::Core,
         out_dir: out,
         corpus_dir: Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/corpus"),
         program_dir: None,
@@ -38,7 +38,13 @@ fn finish(app: &mut App, rx: std::sync::mpsc::Receiver<RunEvent>) {
 fn finished_app(target: &str, out: PathBuf) -> App {
     let mut app = App::new(opts(target, out));
     load_corpus(&mut app);
-    let rx = spawn(app.opts.target.clone(), 0, 0, true, None);
+    let rx = spawn(
+        app.opts.target.clone(),
+        0,
+        0,
+        tokenscope_scenarios::SuiteSelection::Core,
+        None,
+    );
     finish(&mut app, rx);
     app
 }
@@ -163,7 +169,11 @@ fn live_state_matches_engine_and_report_outputs() {
     let campaign = app.campaign.clone().expect("finished");
 
     // The TUI shows exactly what the engine produces for the same scenarios.
-    let expected = Engine::new().run_campaign(VULN, 0, &build_scenarios(VULN, 0, 0, true));
+    let expected = Engine::new().run_campaign(
+        VULN,
+        0,
+        &build_scenarios(VULN, 0, 0, tokenscope_scenarios::SuiteSelection::Core),
+    );
     assert_eq!(campaign, expected);
     assert_eq!(app.runs, expected.runs);
 
