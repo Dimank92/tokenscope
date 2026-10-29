@@ -10,6 +10,17 @@ use tokenscope_model::{
     TransferFeeParams,
 };
 
+mod dimensions;
+mod guided;
+
+pub use dimensions::{
+    AMOUNT_CLASSES, Coverage, FEE_CLASSES, amount_class, cells, fee_class, universe,
+};
+pub use guided::{
+    BOUNDARY_BPS, BOUNDARY_MAX_FEE, GuidedBatch, boundary_scenarios, generate_extended,
+    generate_guided, mutate, rounding_boundaries,
+};
+
 /// SplitMix64 pseudo-random generator (Steele, Lea, Flood 2014). Deterministic and portable.
 #[derive(Debug, Clone)]
 pub struct SplitMix64(u64);

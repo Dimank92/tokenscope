@@ -50,6 +50,26 @@ pub enum MintExtension {
     TransferHook,
 }
 
+impl MintExtension {
+    /// Stable snake_case name of the extension kind.
+    pub fn name(self) -> &'static str {
+        match self {
+            MintExtension::DefaultAccountState { .. } => "default_account_state",
+            MintExtension::Pausable => "pausable",
+            MintExtension::PermanentDelegate => "permanent_delegate",
+            MintExtension::TransferHook => "transfer_hook",
+        }
+    }
+
+    /// Every extension kind name.
+    pub const NAMES: [&'static str; 4] = [
+        "default_account_state",
+        "pausable",
+        "permanent_delegate",
+        "transfer_hook",
+    ];
+}
+
 /// Which account an adversarial instruction substitutes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -126,6 +146,50 @@ pub enum Action {
 }
 
 impl Action {
+    /// Stable snake_case name of the action kind (the `kind` tag in JSON).
+    pub fn kind_name(self) -> &'static str {
+        match self {
+            Action::Deposit { .. } => "deposit",
+            Action::Withdraw => "withdraw",
+            Action::FreezeDepositor => "freeze_depositor",
+            Action::ThawDepositor => "thaw_depositor",
+            Action::UnauthorizedWithdraw => "unauthorized_withdraw",
+            Action::Pause => "pause",
+            Action::Resume => "resume",
+            Action::EnableCpiGuard => "enable_cpi_guard",
+            Action::DisableCpiGuard => "disable_cpi_guard",
+            Action::ThawVault => "thaw_vault",
+            Action::ApproveDelegate { .. } => "approve_delegate",
+            Action::RevokeDelegate => "revoke_delegate",
+            Action::DelegateTransfer { .. } => "delegate_transfer",
+            Action::PermanentDelegateDrain { .. } => "permanent_delegate_drain",
+            Action::MismatchedDeposit { .. } => "mismatched_deposit",
+            Action::MismatchedWithdraw { .. } => "mismatched_withdraw",
+            Action::ReinitEscrow => "reinit_escrow",
+        }
+    }
+
+    /// Every action kind name, in declaration order.
+    pub const KIND_NAMES: [&'static str; 17] = [
+        "deposit",
+        "withdraw",
+        "freeze_depositor",
+        "thaw_depositor",
+        "unauthorized_withdraw",
+        "pause",
+        "resume",
+        "enable_cpi_guard",
+        "disable_cpi_guard",
+        "thaw_vault",
+        "approve_delegate",
+        "revoke_delegate",
+        "delegate_transfer",
+        "permanent_delegate_drain",
+        "mismatched_deposit",
+        "mismatched_withdraw",
+        "reinit_escrow",
+    ];
+
     /// The token amount this action carries, if any.
     pub fn amount(self) -> Option<u64> {
         match self {
@@ -244,6 +308,50 @@ impl Scenario {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn kind_names_match_the_json_tags_and_the_constant_list() {
+        use super::*;
+        let all = [
+            Action::Deposit { amount: 1 },
+            Action::Withdraw,
+            Action::FreezeDepositor,
+            Action::ThawDepositor,
+            Action::UnauthorizedWithdraw,
+            Action::Pause,
+            Action::Resume,
+            Action::EnableCpiGuard,
+            Action::DisableCpiGuard,
+            Action::ThawVault,
+            Action::ApproveDelegate { amount: 1 },
+            Action::RevokeDelegate,
+            Action::DelegateTransfer { amount: 1 },
+            Action::PermanentDelegateDrain { amount: 1 },
+            Action::MismatchedDeposit {
+                mismatch: Mismatch::WrongMint,
+                amount: 1,
+            },
+            Action::MismatchedWithdraw {
+                mismatch: Mismatch::WrongMint,
+            },
+            Action::ReinitEscrow,
+        ];
+        assert_eq!(all.len(), Action::KIND_NAMES.len());
+        for (a, name) in all.iter().zip(Action::KIND_NAMES) {
+            assert_eq!(a.kind_name(), name);
+            let json = serde_json::to_value(a).unwrap();
+            assert_eq!(json["kind"], name, "kind_name must equal the serde tag");
+        }
+        for e in [
+            MintExtension::DefaultAccountState { frozen: true },
+            MintExtension::Pausable,
+            MintExtension::PermanentDelegate,
+            MintExtension::TransferHook,
+        ] {
+            assert!(MintExtension::NAMES.contains(&e.name()));
+            assert_eq!(serde_json::to_value(e).unwrap()["kind"], e.name());
+        }
+    }
+
     #[test]
     fn amount_accessors_cover_exactly_the_amount_carrying_actions() {
         use super::*;

@@ -531,3 +531,83 @@ fn suite_selection_extensions_and_all_and_validation() {
             && inspect.stdout.contains("INV-CUST-001")
     );
 }
+
+fn strategy_args<'a>(strategy: &'a str, out: &'a str) -> Vec<&'a str> {
+    vec![
+        "run",
+        "--target",
+        VULN,
+        "--no-suite",
+        "--seed",
+        "3",
+        "--count",
+        "8",
+        "--strategy",
+        strategy,
+        "--out",
+        out,
+    ]
+}
+
+#[test]
+fn strategies_extended_and_guided_run_deterministically_and_are_validated() {
+    let dir = tempfile::tempdir().unwrap();
+    let corpus = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/corpus");
+    let (o1, o2) = (dir.path().join("a"), dir.path().join("b"));
+
+    let a = tokenscope(&strategy_args("extended", s(&o1)));
+    let b = tokenscope(&strategy_args("extended", s(&o2)));
+    assert!(a.code == 0 || a.code == 1, "{}{}", a.stdout, a.stderr);
+    assert_eq!(a.code, b.code);
+    assert!(a.stdout.contains("executed 8 "), "{}", a.stdout);
+    assert_eq!(
+        only_dir(&o1).file_name(),
+        only_dir(&o2).file_name(),
+        "same campaign id => deterministic"
+    );
+
+    let g = tokenscope(&[
+        "run",
+        "--target",
+        VULN,
+        "--no-suite",
+        "--seed",
+        "3",
+        "--count",
+        "10",
+        "--strategy",
+        "guided",
+        "--corpus",
+        s(&corpus),
+        "--out",
+        s(&dir.path().join("g")),
+    ]);
+    assert!(g.code == 0 || g.code == 1, "{}{}", g.stdout, g.stderr);
+    assert!(
+        g.stdout.contains("guided generation: selected") && g.stdout.contains("not code coverage"),
+        "{}",
+        g.stdout
+    );
+
+    assert_eq!(
+        tokenscope(&["run", "--target", VULN, "--strategy", "magic"]).code,
+        2
+    );
+    let cfg = dir.path().join("c.json");
+    fs::write(&cfg, r#"{"schema_version":1,"target":"demo-escrow-vulnerable","suite":"none","generated":4,"strategy":"extended"}"#).unwrap();
+    let c = tokenscope(&[
+        "run",
+        "--config",
+        s(&cfg),
+        "--out",
+        s(&dir.path().join("c")),
+    ]);
+    assert!(c.code == 0 || c.code == 1, "{}{}", c.stdout, c.stderr);
+    assert!(c.stdout.contains("executed 4 "));
+    fs::write(
+        &cfg,
+        r#"{"schema_version":1,"target":"demo-escrow-vulnerable","strategy":"nope"}"#,
+    )
+    .unwrap();
+    assert_eq!(tokenscope(&["run", "--config", s(&cfg)]).code, 2);
+}

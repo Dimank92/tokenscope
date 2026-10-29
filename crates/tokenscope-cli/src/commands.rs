@@ -19,7 +19,9 @@ use tokenscope_model::{
     Campaign, CorpusCase, Expectation, Finding, ModelError, OutcomeClass, Scenario,
 };
 use tokenscope_report::{render_json, render_text, write_artifacts};
-use tokenscope_scenarios::{SuiteSelection, builtin_suite, extension_suite, generate};
+use tokenscope_scenarios::{
+    SuiteSelection, builtin_suite, extension_suite, generate, generate_extended, generate_guided,
+};
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError};
 
 use crate::{
@@ -133,6 +135,9 @@ struct RunConfig {
     /// `none | core | extensions | all`; when present it overrides `builtin_suite`.
     #[serde(default)]
     suite: Option<String>,
+    /// `random | extended | guided` (default `random`).
+    #[serde(default)]
+    strategy: Option<String>,
 }
 
 fn yes() -> bool {
@@ -147,12 +152,14 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             target,
             seed,
             count,
+            strategy,
+            corpus,
             suite,
             no_suite,
             config,
             out: out_path,
         } => {
-            let (target, seed, count, suite) = match config {
+            let (target, seed, count, suite, strategy) = match config {
                 Some(path) => {
                     let text = read_file(&path)?;
                     let c: RunConfig = serde_json::from_str(&text)
@@ -169,14 +176,29 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
                         None if c.builtin_suite => SuiteSelection::Core,
                         None => SuiteSelection::None,
                     };
-                    (c.target, c.seed, c.generated, sel)
+                    let strategy = parse_strategy(c.strategy.as_deref().unwrap_or("random"))?;
+                    (c.target, c.seed, c.generated, sel, strategy)
                 }
                 None => {
                     let t = target.ok_or_else(|| usage("`run` needs --target or --config"))?;
-                    (t, seed, count, suite_arg(&suite, no_suite)?)
+                    (
+                        t,
+                        seed,
+                        count,
+                        suite_arg(&suite, no_suite)?,
+                        parse_strategy(&strategy)?,
+                    )
                 }
             };
-            run_campaigns(&target, seed, count, suite, out_dir(out_path), out)
+            let spec = RunSpec {
+                target,
+                seed,
+                count,
+                suite,
+                strategy,
+                corpus: corpus_dir(corpus),
+            };
+            run_campaigns(&spec, out_dir(out_path), out)
         }
         Command::Replay { scenario_file } => replay(&scenario_file, out),
         Command::Minimize {
@@ -378,31 +400,80 @@ fn exit_for(c: &Campaign) -> i32 {
     }
 }
 
-fn run_campaigns(
-    target: &str,
+/// How generated scenarios are produced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Strategy {
+    Random,
+    Extended,
+    Guided,
+}
+
+fn parse_strategy(name: &str) -> Result<Strategy> {
+    match name {
+        "random" => Ok(Strategy::Random),
+        "extended" => Ok(Strategy::Extended),
+        "guided" => Ok(Strategy::Guided),
+        other => Err(usage(format!(
+            "unknown strategy `{other}`; expected random, extended or guided"
+        ))),
+    }
+}
+
+/// Everything that defines a `run` campaign.
+struct RunSpec {
+    target: String,
     seed: u64,
     count: usize,
     suite: SuiteSelection,
-    out_path: PathBuf,
-    out: &mut dyn Write,
-) -> Result<i32> {
-    if count > MAX_GENERATED {
+    strategy: Strategy,
+    corpus: PathBuf,
+}
+
+fn run_campaigns(spec: &RunSpec, out_path: PathBuf, out: &mut dyn Write) -> Result<i32> {
+    if spec.count > MAX_GENERATED {
         return Err(usage(format!(
-            "generated scenario count {count} exceeds the limit of {MAX_GENERATED}"
+            "generated scenario count {} exceeds the limit of {MAX_GENERATED}",
+            spec.count
         )));
     }
-    let targets = resolve_targets(target)?;
-    if suite == SuiteSelection::None && count == 0 {
+    let targets = resolve_targets(&spec.target)?;
+    if spec.suite == SuiteSelection::None && spec.count == 0 {
         return Err(usage(
             "nothing to run: enable the built-in suite or request generated scenarios",
         ));
     }
+    let corpus_cases = if spec.strategy == Strategy::Guided {
+        Corpus::open(spec.corpus.clone())
+            .list()
+            .map_err(corpus_err)?
+    } else {
+        vec![]
+    };
     let engine = Engine::new();
     let mut code = EXIT_OK;
     for t in targets {
-        let mut scenarios: Vec<Scenario> = suite.scenarios(&t);
-        scenarios.extend(generate(seed, count, &t));
-        let campaign = engine.run_campaign(&t, seed, &scenarios);
+        let mut scenarios: Vec<Scenario> = spec.suite.scenarios(&t);
+        match spec.strategy {
+            Strategy::Random => scenarios.extend(generate(spec.seed, spec.count, &t)),
+            Strategy::Extended => scenarios.extend(generate_extended(spec.seed, spec.count, &t)),
+            Strategy::Guided => {
+                // Seeds: both built-in suites and the corpus, so the batch complements them.
+                let mut seeds = SuiteSelection::All.scenarios(&t);
+                seeds.extend(corpus_cases.iter().map(|c| c.scenario.clone()));
+                let batch = generate_guided(spec.seed, spec.count, &t, &seeds);
+                writeln!(
+                    out,
+                    "guided generation: selected {} of {} candidates ({} redundant skipped); input-space coverage {}/{} cells (not code coverage)",
+                    batch.scenarios.len(),
+                    batch.candidates,
+                    batch.redundant,
+                    batch.coverage.universe_hit(),
+                    tokenscope_scenarios::universe().len()
+                )?;
+                scenarios.extend(batch.scenarios);
+            }
+        }
+        let campaign = engine.run_campaign(&t, spec.seed, &scenarios);
         let artifacts =
             write_artifacts(&campaign, &out_path).map_err(|e| CliError::Setup(e.to_string()))?;
         write!(out, "{}", render_text(&campaign))?;

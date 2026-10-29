@@ -66,6 +66,14 @@ pub enum Command {
         /// Number of generated scenarios.
         #[arg(long, default_value_t = 20, conflicts_with = "config")]
         count: usize,
+        /// How scenarios are generated: `random` (fee scenarios), `extended` (extension and
+        /// adversarial templates) or `guided` (dimension-guided selection seeded by the built-in
+        /// suites and the regression corpus; not code-coverage-guided).
+        #[arg(long, default_value = "random", conflicts_with = "config")]
+        strategy: String,
+        /// Corpus directory whose scenarios seed `--strategy guided` (default: `fixtures/corpus`).
+        #[arg(long, conflicts_with = "config")]
+        corpus: Option<PathBuf>,
         /// Built-in scenarios: `core` (fee accounting), `extensions`, `all`, or `none`.
         #[arg(long, default_value = "core", conflicts_with = "config")]
         suite: String,
