@@ -15,6 +15,8 @@ tokenscope-shrinker = { path = "../tokenscope-shrinker" }
 thiserror.workspace = true
 
 [dev-dependencies]
+tokenscope-executor = { path = "../tokenscope-executor" }
+tokenscope-report = { path = "../tokenscope-report" }
 tempfile = "3"
 tokenscope-scenarios = { path = "../tokenscope-scenarios" }
 

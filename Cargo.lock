@@ -4457,8 +4457,10 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokenscope-adapter",
+ "tokenscope-executor",
  "tokenscope-invariants",
  "tokenscope-model",
+ "tokenscope-report",
  "tokenscope-scenarios",
  "tokenscope-shrinker",
 ]
