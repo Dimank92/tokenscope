@@ -1,0 +1,775 @@
+{
+  "schema_version": 1,
+  "id": "cp_4f9c4e631b104655",
+  "target": "demo-escrow-vulnerable",
+  "seed": 0,
+  "runs": [
+    {
+      "scenario": {
+        "schema_version": 1,
+        "name": "control-no-fee",
+        "seed": 0,
+        "target": "demo-escrow-vulnerable",
+        "mint": {
+          "decimals": 6,
+          "transfer_fee": null
+        },
+        "initial_balance": 10000,
+        "actions": [
+          {
+            "kind": "deposit",
+            "amount": 1000
+          }
+        ]
+      },
+      "scenario_id": "sc_18483a733e61e886",
+      "outcome": "pass",
+      "setup_error": null,
+      "trace": {
+        "schema_version": 1,
+        "scenario_id": "sc_18483a733e61e886",
+        "target": "demo-escrow-vulnerable",
+        "initial": {
+          "vault_amount": 0,
+          "vault_withheld": null,
+          "escrow_recorded": 0,
+          "depositor_balance": 10000,
+          "destination_balance": 0,
+          "depositor_frozen": false,
+          "attacker_balance": 0,
+          "vault_frozen": false,
+          "mint_paused": null,
+          "source_cpi_guard": false,
+          "delegate_allowance": 0,
+          "hook_invocations": null,
+          "issuer_balance": 0
+        },
+        "accounts": [
+          {
+            "label": "program",
+            "address": "AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr"
+          },
+          {
+            "label": "mint",
+            "address": "D33ribj6kE24ymRHkjg4vkTgqdpm1zcNXhTQjR19Tn3N"
+          },
+          {
+            "label": "escrow_state",
+            "address": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X"
+          },
+          {
+            "label": "escrow_authority",
+            "address": "9DbLtdL8hiu5ZX4y3UTRGKKAJ1BhxWEHpJPLJFGJPkLT"
+          },
+          {
+            "label": "depositor",
+            "address": "Fj1M5mBWsRcEYevxATdAXcmkNXNZULpxDfo6X8HUdpob"
+          },
+          {
+            "label": "depositor_source",
+            "address": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6"
+          },
+          {
+            "label": "withdraw_destination",
+            "address": "7hJqdmiwe2BadY3eZgr6cyWJRJPnYuPsJgbqteA3Vvzr"
+          },
+          {
+            "label": "attacker",
+            "address": "3PcU8GJnv5eQ9m8dkvsqMJdPCu28WXAQdpRK2sF9YxwX"
+          },
+          {
+            "label": "attacker_destination",
+            "address": "E4DBGE5jJn9EWzCaVLRgwg4Mg6XDLmtv112PsJdqpdeZ"
+          },
+          {
+            "label": "vault",
+            "address": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct"
+          }
+        ],
+        "steps": [
+          {
+            "index": 0,
+            "action": {
+              "kind": "deposit",
+              "amount": 1000
+            },
+            "before": {
+              "vault_amount": 0,
+              "vault_withheld": null,
+              "escrow_recorded": 0,
+              "depositor_balance": 10000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "after": {
+              "vault_amount": 1000,
+              "vault_withheld": null,
+              "escrow_recorded": 1000,
+              "depositor_balance": 9000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "status": {
+              "status": "ok"
+            },
+            "logs": [
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+              "Program log: Instruction: TransferChecked",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1720 of 1398511 compute units",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 3229 of 1400000 compute units",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+            ],
+            "compute_units": 3229
+          }
+        ]
+      },
+      "findings": []
+    },
+    {
+      "scenario": {
+        "schema_version": 1,
+        "name": "fee-2pct-deposit",
+        "seed": 0,
+        "target": "demo-escrow-vulnerable",
+        "mint": {
+          "decimals": 6,
+          "transfer_fee": {
+            "basis_points": 200,
+            "maximum_fee": 18446744073709551615
+          }
+        },
+        "initial_balance": 10000,
+        "actions": [
+          {
+            "kind": "deposit",
+            "amount": 1000
+          }
+        ]
+      },
+      "scenario_id": "sc_3573a0f4384e7945",
+      "outcome": "invariant_violation",
+      "setup_error": null,
+      "trace": {
+        "schema_version": 1,
+        "scenario_id": "sc_3573a0f4384e7945",
+        "target": "demo-escrow-vulnerable",
+        "initial": {
+          "vault_amount": 0,
+          "vault_withheld": 0,
+          "escrow_recorded": 0,
+          "depositor_balance": 10000,
+          "destination_balance": 0,
+          "depositor_frozen": false,
+          "attacker_balance": 0,
+          "vault_frozen": false,
+          "mint_paused": null,
+          "source_cpi_guard": false,
+          "delegate_allowance": 0,
+          "hook_invocations": null,
+          "issuer_balance": 0
+        },
+        "accounts": [
+          {
+            "label": "program",
+            "address": "AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr"
+          },
+          {
+            "label": "mint",
+            "address": "D33ribj6kE24ymRHkjg4vkTgqdpm1zcNXhTQjR19Tn3N"
+          },
+          {
+            "label": "escrow_state",
+            "address": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X"
+          },
+          {
+            "label": "escrow_authority",
+            "address": "9DbLtdL8hiu5ZX4y3UTRGKKAJ1BhxWEHpJPLJFGJPkLT"
+          },
+          {
+            "label": "depositor",
+            "address": "Fj1M5mBWsRcEYevxATdAXcmkNXNZULpxDfo6X8HUdpob"
+          },
+          {
+            "label": "depositor_source",
+            "address": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6"
+          },
+          {
+            "label": "withdraw_destination",
+            "address": "7hJqdmiwe2BadY3eZgr6cyWJRJPnYuPsJgbqteA3Vvzr"
+          },
+          {
+            "label": "attacker",
+            "address": "3PcU8GJnv5eQ9m8dkvsqMJdPCu28WXAQdpRK2sF9YxwX"
+          },
+          {
+            "label": "attacker_destination",
+            "address": "E4DBGE5jJn9EWzCaVLRgwg4Mg6XDLmtv112PsJdqpdeZ"
+          },
+          {
+            "label": "vault",
+            "address": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct"
+          }
+        ],
+        "steps": [
+          {
+            "index": 0,
+            "action": {
+              "kind": "deposit",
+              "amount": 1000
+            },
+            "before": {
+              "vault_amount": 0,
+              "vault_withheld": 0,
+              "escrow_recorded": 0,
+              "depositor_balance": 10000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "after": {
+              "vault_amount": 980,
+              "vault_withheld": 20,
+              "escrow_recorded": 1000,
+              "depositor_balance": 9000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "status": {
+              "status": "ok"
+            },
+            "logs": [
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+              "Program log: Instruction: TransferChecked",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+            ],
+            "compute_units": 4334
+          }
+        ]
+      },
+      "findings": [
+        {
+          "schema_version": 1,
+          "id": "fd_eb4facd442285199",
+          "target": "demo-escrow-vulnerable",
+          "scenario_id": "sc_3573a0f4384e7945",
+          "seed": 0,
+          "invariant_id": "INV-ACCT-001",
+          "class": "invariant_violation",
+          "expected": "delta(escrow_recorded) == delta(vault_amount) (Deposit credit equals amount received)",
+          "observed": "step 0: deposit of 1000 credited 1000 but the vault received 980 (withheld fee delta 20)",
+          "deltas": [
+            {
+              "label": "escrow_recorded",
+              "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+              "before": 0,
+              "after": 1000
+            },
+            {
+              "label": "vault_amount",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 980
+            },
+            {
+              "label": "depositor_balance",
+              "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+              "before": 10000,
+              "after": 9000
+            },
+            {
+              "label": "vault_withheld",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 20
+            }
+          ],
+          "logs": [
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+          ],
+          "severity": "medium",
+          "severity_rationale": "The escrow over- or under-credits relative to tokens actually held. Impact depends on how credits are later redeemed; this check alone does not prove exploitability.",
+          "reproduction": {
+            "command": "tokenscope replay sc_3573a0f4384e7945.json",
+            "scenario": {
+              "schema_version": 1,
+              "name": "fee-2pct-deposit",
+              "seed": 0,
+              "target": "demo-escrow-vulnerable",
+              "mint": {
+                "decimals": 6,
+                "transfer_fee": {
+                  "basis_points": 200,
+                  "maximum_fee": 18446744073709551615
+                }
+              },
+              "initial_balance": 10000,
+              "actions": [
+                {
+                  "kind": "deposit",
+                  "amount": 1000
+                }
+              ]
+            }
+          },
+          "minimized": null
+        },
+        {
+          "schema_version": 1,
+          "id": "fd_71ada089b0ce57de",
+          "target": "demo-escrow-vulnerable",
+          "scenario_id": "sc_3573a0f4384e7945",
+          "seed": 0,
+          "invariant_id": "INV-SOLV-001",
+          "class": "invariant_violation",
+          "expected": "escrow_recorded <= vault_amount (Recorded liability does not exceed vault assets)",
+          "observed": "step 0: escrow records 1000 owed but the vault holds 980: shortfall of 20",
+          "deltas": [
+            {
+              "label": "escrow_recorded",
+              "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+              "before": 0,
+              "after": 1000
+            },
+            {
+              "label": "vault_amount",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 980
+            },
+            {
+              "label": "depositor_balance",
+              "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+              "before": 10000,
+              "after": 9000
+            },
+            {
+              "label": "vault_withheld",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 20
+            }
+          ],
+          "logs": [
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+          ],
+          "severity": "high",
+          "severity_rationale": "Recorded liabilities exceed vault assets, so honoring the record can fail or drain other users' funds. Exploitability by an attacker is not established by this check.",
+          "reproduction": {
+            "command": "tokenscope replay sc_3573a0f4384e7945.json",
+            "scenario": {
+              "schema_version": 1,
+              "name": "fee-2pct-deposit",
+              "seed": 0,
+              "target": "demo-escrow-vulnerable",
+              "mint": {
+                "decimals": 6,
+                "transfer_fee": {
+                  "basis_points": 200,
+                  "maximum_fee": 18446744073709551615
+                }
+              },
+              "initial_balance": 10000,
+              "actions": [
+                {
+                  "kind": "deposit",
+                  "amount": 1000
+                }
+              ]
+            }
+          },
+          "minimized": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "schema_version": 1,
+        "name": "fee-2pct-deposit-withdraw",
+        "seed": 0,
+        "target": "demo-escrow-vulnerable",
+        "mint": {
+          "decimals": 6,
+          "transfer_fee": {
+            "basis_points": 200,
+            "maximum_fee": 18446744073709551615
+          }
+        },
+        "initial_balance": 10000,
+        "actions": [
+          {
+            "kind": "deposit",
+            "amount": 1000
+          },
+          {
+            "kind": "withdraw"
+          }
+        ]
+      },
+      "scenario_id": "sc_d3d868bf76f7c2ea",
+      "outcome": "invariant_violation",
+      "setup_error": null,
+      "trace": {
+        "schema_version": 1,
+        "scenario_id": "sc_d3d868bf76f7c2ea",
+        "target": "demo-escrow-vulnerable",
+        "initial": {
+          "vault_amount": 0,
+          "vault_withheld": 0,
+          "escrow_recorded": 0,
+          "depositor_balance": 10000,
+          "destination_balance": 0,
+          "depositor_frozen": false,
+          "attacker_balance": 0,
+          "vault_frozen": false,
+          "mint_paused": null,
+          "source_cpi_guard": false,
+          "delegate_allowance": 0,
+          "hook_invocations": null,
+          "issuer_balance": 0
+        },
+        "accounts": [
+          {
+            "label": "program",
+            "address": "AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr"
+          },
+          {
+            "label": "mint",
+            "address": "D33ribj6kE24ymRHkjg4vkTgqdpm1zcNXhTQjR19Tn3N"
+          },
+          {
+            "label": "escrow_state",
+            "address": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X"
+          },
+          {
+            "label": "escrow_authority",
+            "address": "9DbLtdL8hiu5ZX4y3UTRGKKAJ1BhxWEHpJPLJFGJPkLT"
+          },
+          {
+            "label": "depositor",
+            "address": "Fj1M5mBWsRcEYevxATdAXcmkNXNZULpxDfo6X8HUdpob"
+          },
+          {
+            "label": "depositor_source",
+            "address": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6"
+          },
+          {
+            "label": "withdraw_destination",
+            "address": "7hJqdmiwe2BadY3eZgr6cyWJRJPnYuPsJgbqteA3Vvzr"
+          },
+          {
+            "label": "attacker",
+            "address": "3PcU8GJnv5eQ9m8dkvsqMJdPCu28WXAQdpRK2sF9YxwX"
+          },
+          {
+            "label": "attacker_destination",
+            "address": "E4DBGE5jJn9EWzCaVLRgwg4Mg6XDLmtv112PsJdqpdeZ"
+          },
+          {
+            "label": "vault",
+            "address": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct"
+          }
+        ],
+        "steps": [
+          {
+            "index": 0,
+            "action": {
+              "kind": "deposit",
+              "amount": 1000
+            },
+            "before": {
+              "vault_amount": 0,
+              "vault_withheld": 0,
+              "escrow_recorded": 0,
+              "depositor_balance": 10000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "after": {
+              "vault_amount": 980,
+              "vault_withheld": 20,
+              "escrow_recorded": 1000,
+              "depositor_balance": 9000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "status": {
+              "status": "ok"
+            },
+            "logs": [
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+              "Program log: Instruction: TransferChecked",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+            ],
+            "compute_units": 4334
+          },
+          {
+            "index": 1,
+            "action": {
+              "kind": "withdraw"
+            },
+            "before": {
+              "vault_amount": 980,
+              "vault_withheld": 20,
+              "escrow_recorded": 1000,
+              "depositor_balance": 9000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "after": {
+              "vault_amount": 980,
+              "vault_withheld": 20,
+              "escrow_recorded": 1000,
+              "depositor_balance": 9000,
+              "destination_balance": 0,
+              "depositor_frozen": false,
+              "attacker_balance": 0,
+              "vault_frozen": false,
+              "mint_paused": null,
+              "source_cpi_guard": false,
+              "delegate_allowance": 0,
+              "hook_invocations": null,
+              "issuer_balance": 0
+            },
+            "status": {
+              "status": "failed",
+              "error": "Failure(Custom(1))"
+            },
+            "logs": [
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+              "Program log: Instruction: TransferChecked",
+              "Program log: Error: insufficient funds",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1291 of 1396985 compute units",
+              "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb failed: custom program error: 0x1",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4306 of 1400000 compute units",
+              "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr failed: custom program error: 0x1"
+            ],
+            "compute_units": 4306
+          }
+        ]
+      },
+      "findings": [
+        {
+          "schema_version": 1,
+          "id": "fd_1957ad751acd8a38",
+          "target": "demo-escrow-vulnerable",
+          "scenario_id": "sc_d3d868bf76f7c2ea",
+          "seed": 0,
+          "invariant_id": "INV-ACCT-001",
+          "class": "invariant_violation",
+          "expected": "delta(escrow_recorded) == delta(vault_amount) (Deposit credit equals amount received)",
+          "observed": "step 0: deposit of 1000 credited 1000 but the vault received 980 (withheld fee delta 20)",
+          "deltas": [
+            {
+              "label": "escrow_recorded",
+              "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+              "before": 0,
+              "after": 1000
+            },
+            {
+              "label": "vault_amount",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 980
+            },
+            {
+              "label": "depositor_balance",
+              "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+              "before": 10000,
+              "after": 9000
+            },
+            {
+              "label": "vault_withheld",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 20
+            }
+          ],
+          "logs": [
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+          ],
+          "severity": "medium",
+          "severity_rationale": "The escrow over- or under-credits relative to tokens actually held. Impact depends on how credits are later redeemed; this check alone does not prove exploitability.",
+          "reproduction": {
+            "command": "tokenscope replay sc_d3d868bf76f7c2ea.json",
+            "scenario": {
+              "schema_version": 1,
+              "name": "fee-2pct-deposit-withdraw",
+              "seed": 0,
+              "target": "demo-escrow-vulnerable",
+              "mint": {
+                "decimals": 6,
+                "transfer_fee": {
+                  "basis_points": 200,
+                  "maximum_fee": 18446744073709551615
+                }
+              },
+              "initial_balance": 10000,
+              "actions": [
+                {
+                  "kind": "deposit",
+                  "amount": 1000
+                },
+                {
+                  "kind": "withdraw"
+                }
+              ]
+            }
+          },
+          "minimized": null
+        },
+        {
+          "schema_version": 1,
+          "id": "fd_1574ab34a858f26b",
+          "target": "demo-escrow-vulnerable",
+          "scenario_id": "sc_d3d868bf76f7c2ea",
+          "seed": 0,
+          "invariant_id": "INV-SOLV-001",
+          "class": "invariant_violation",
+          "expected": "escrow_recorded <= vault_amount (Recorded liability does not exceed vault assets)",
+          "observed": "step 0: escrow records 1000 owed but the vault holds 980: shortfall of 20",
+          "deltas": [
+            {
+              "label": "escrow_recorded",
+              "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+              "before": 0,
+              "after": 1000
+            },
+            {
+              "label": "vault_amount",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 980
+            },
+            {
+              "label": "depositor_balance",
+              "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+              "before": 10000,
+              "after": 9000
+            },
+            {
+              "label": "vault_withheld",
+              "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+              "before": 0,
+              "after": 20
+            }
+          ],
+          "logs": [
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+            "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+          ],
+          "severity": "high",
+          "severity_rationale": "Recorded liabilities exceed vault assets, so honoring the record can fail or drain other users' funds. Exploitability by an attacker is not established by this check.",
+          "reproduction": {
+            "command": "tokenscope replay sc_d3d868bf76f7c2ea.json",
+            "scenario": {
+              "schema_version": 1,
+              "name": "fee-2pct-deposit-withdraw",
+              "seed": 0,
+              "target": "demo-escrow-vulnerable",
+              "mint": {
+                "decimals": 6,
+                "transfer_fee": {
+                  "basis_points": 200,
+                  "maximum_fee": 18446744073709551615
+                }
+              },
+              "initial_balance": 10000,
+              "actions": [
+                {
+                  "kind": "deposit",
+                  "amount": 1000
+                },
+                {
+                  "kind": "withdraw"
+                }
+              ]
+            }
+          },
+          "minimized": null
+        }
+      ]
+    }
+  ]
+}

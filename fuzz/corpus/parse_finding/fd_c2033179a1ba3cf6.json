@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "fd_c2033179a1ba3cf6",
+  "target": "demo-escrow-vulnerable",
+  "scenario_id": "sc_df0dd599d80b346d",
+  "seed": 0,
+  "invariant_id": "INV-ACCT-001",
+  "class": "invariant_violation",
+  "expected": "delta(escrow_recorded) == delta(vault_amount) (Deposit credit equals amount received)",
+  "observed": "step 0: deposit of 1 credited 1 but the vault received 0 (withheld fee delta 1)",
+  "deltas": [
+    {
+      "label": "escrow_recorded",
+      "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+      "before": 0,
+      "after": 1
+    },
+    {
+      "label": "vault_amount",
+      "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+      "before": 0,
+      "after": 0
+    },
+    {
+      "label": "depositor_balance",
+      "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+      "before": 100,
+      "after": 99
+    },
+    {
+      "label": "vault_withheld",
+      "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+      "before": 0,
+      "after": 1
+    }
+  ],
+  "logs": [
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+    "Program log: Instruction: TransferChecked",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2824 of 1398502 compute units",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4342 of 1400000 compute units",
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+  ],
+  "severity": "medium",
+  "severity_rationale": "The escrow over- or under-credits relative to tokens actually held. Impact depends on how credits are later redeemed; this check alone does not prove exploitability.",
+  "reproduction": {
+    "command": "tokenscope replay sc_df0dd599d80b346d.json",
+    "scenario": {
+      "schema_version": 1,
+      "name": "fee-rounds-up-tiny-deposit",
+      "seed": 0,
+      "target": "demo-escrow-vulnerable",
+      "mint": {
+        "decimals": 6,
+        "transfer_fee": {
+          "basis_points": 1,
+          "maximum_fee": 18446744073709551615
+        }
+      },
+      "initial_balance": 100,
+      "actions": [
+        {
+          "kind": "deposit",
+          "amount": 1
+        }
+      ]
+    }
+  },
+  "minimized": null
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "fee-capped-by-maximum",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 1000,
+      "maximum_fee": 10
+    }
+  },
+  "initial_balance": 100000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 50000
+    }
+  ]
+}

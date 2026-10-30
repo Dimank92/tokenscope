@@ -117,6 +117,24 @@ impl ExecutionTrace {
         }
     }
 
+    /// Parse a trace from JSON, rejecting unknown schema versions.
+    pub fn from_json(input: &str) -> Result<Self, crate::ModelError> {
+        let t: ExecutionTrace =
+            serde_json::from_str(input).map_err(|e| crate::ModelError::Malformed(e.to_string()))?;
+        if t.schema_version != SCHEMA_VERSION {
+            return Err(crate::ModelError::UnsupportedSchema {
+                found: t.schema_version,
+                supported: SCHEMA_VERSION,
+            });
+        }
+        Ok(t)
+    }
+
+    /// Serialize to pretty JSON.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string_pretty(self).expect("trace serialization is infallible")
+    }
+
     /// Look up an account address by label.
     pub fn address_of(&self, label: &str) -> Option<&str> {
         self.accounts

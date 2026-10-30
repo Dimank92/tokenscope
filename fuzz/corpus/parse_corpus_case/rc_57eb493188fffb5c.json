@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "rc_57eb493188fffb5c",
+  "description": "Minimized transfer-fee accounting bug: 1 unit at 1 bp (fee rounds up to 1) is credited as 1 but nothing arrives",
+  "scenario": {
+    "schema_version": 1,
+    "name": "noisy-min",
+    "seed": 12,
+    "target": "demo-escrow-vulnerable",
+    "mint": {
+      "decimals": 0,
+      "transfer_fee": {
+        "basis_points": 1,
+        "maximum_fee": 1
+      }
+    },
+    "initial_balance": 1,
+    "actions": [
+      {
+        "kind": "deposit",
+        "amount": 1
+      }
+    ]
+  },
+  "expect": {
+    "outcome": "invariant_violation",
+    "violated": [
+      "INV-ACCT-001",
+      "INV-SOLV-001"
+    ]
+  }
+}

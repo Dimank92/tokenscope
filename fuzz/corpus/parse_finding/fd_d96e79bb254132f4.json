@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "fd_d96e79bb254132f4",
+  "target": "demo-escrow-vulnerable",
+  "scenario_id": "sc_2f4fe5926138aef9",
+  "seed": 0,
+  "invariant_id": "INV-SOLV-001",
+  "class": "invariant_violation",
+  "expected": "escrow_recorded <= vault_amount (Recorded liability does not exceed vault assets)",
+  "observed": "step 0: escrow records 50000 owed but the vault holds 49990: shortfall of 10",
+  "deltas": [
+    {
+      "label": "escrow_recorded",
+      "account": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X",
+      "before": 0,
+      "after": 50000
+    },
+    {
+      "label": "vault_amount",
+      "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+      "before": 0,
+      "after": 49990
+    },
+    {
+      "label": "depositor_balance",
+      "account": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6",
+      "before": 100000,
+      "after": 50000
+    },
+    {
+      "label": "vault_withheld",
+      "account": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct",
+      "before": 0,
+      "after": 10
+    }
+  ],
+  "logs": [
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+    "Program log: Instruction: TransferChecked",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2815 of 1398502 compute units",
+    "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4333 of 1400000 compute units",
+    "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+  ],
+  "severity": "high",
+  "severity_rationale": "Recorded liabilities exceed vault assets, so honoring the record can fail or drain other users' funds. Exploitability by an attacker is not established by this check.",
+  "reproduction": {
+    "command": "tokenscope replay sc_2f4fe5926138aef9.json",
+    "scenario": {
+      "schema_version": 1,
+      "name": "fee-capped-by-maximum",
+      "seed": 0,
+      "target": "demo-escrow-vulnerable",
+      "mint": {
+        "decimals": 6,
+        "transfer_fee": {
+          "basis_points": 1000,
+          "maximum_fee": 10
+        }
+      },
+      "initial_balance": 100000,
+      "actions": [
+        {
+          "kind": "deposit",
+          "amount": 50000
+        }
+      ]
+    }
+  },
+  "minimized": null
+}

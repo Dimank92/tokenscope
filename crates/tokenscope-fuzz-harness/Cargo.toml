@@ -1,0 +1,28 @@
+[package]
+name = "tokenscope-fuzz-harness"
+description = "Fuzz-target bodies shared by cargo-fuzz targets and deterministic stable tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokenscope-core = { path = "../tokenscope-core", optional = true }
+tokenscope-invariants = { path = "../tokenscope-invariants" }
+tokenscope-model = { path = "../tokenscope-model" }
+tokenscope-report = { path = "../tokenscope-report" }
+tokenscope-shrinker = { path = "../tokenscope-shrinker" }
+tokenscope-scenarios = { path = "../tokenscope-scenarios" }
+
+[features]
+# Enables the `replay_scenario` target (boots the real SVM; pulls in the Agave crates).
+engine = ["dep:tokenscope-core"]
+
+[dev-dependencies]
+proptest = "1"
+# Self dev-dependency: the tests always exercise the engine-backed target.
+tokenscope-fuzz-harness = { path = ".", features = ["engine"] }
+
+[lints]
+workspace = true

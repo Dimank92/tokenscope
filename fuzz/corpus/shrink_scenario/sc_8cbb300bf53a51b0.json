@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "name": "cpi-guard-blocks-escrow-deposit",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "enable_cpi_guard"
+    },
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "disable_cpi_guard"
+    },
+    {
+      "kind": "deposit",
+      "amount": 1000
+    }
+  ]
+}

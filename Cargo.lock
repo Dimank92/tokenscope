@@ -4482,6 +4482,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokenscope-fuzz-harness"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "tokenscope-core",
+ "tokenscope-fuzz-harness",
+ "tokenscope-invariants",
+ "tokenscope-model",
+ "tokenscope-report",
+ "tokenscope-scenarios",
+ "tokenscope-shrinker",
+]
+
+[[package]]
 name = "tokenscope-invariants"
 version = "0.1.0"
 dependencies = [

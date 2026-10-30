@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "rc_887f80cfe420065b",
+  "description": "Same minimized scenario on the corrected escrow must keep passing",
+  "scenario": {
+    "schema_version": 1,
+    "name": "noisy-min",
+    "seed": 12,
+    "target": "demo-escrow-corrected",
+    "mint": {
+      "decimals": 0,
+      "transfer_fee": {
+        "basis_points": 1,
+        "maximum_fee": 1
+      }
+    },
+    "initial_balance": 1,
+    "actions": [
+      {
+        "kind": "deposit",
+        "amount": 1
+      }
+    ]
+  },
+  "expect": {
+    "outcome": "pass",
+    "violated": []
+  }
+}

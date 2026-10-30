@@ -126,7 +126,7 @@ pub enum Verdict {
 pub struct Evaluation {
     /// Invariant identifier.
     pub invariant_id: &'static str,
-    /// Step index.
+    /// Position of the step within the trace (not the step's self-reported `index`).
     pub step_index: usize,
     /// Outcome.
     pub verdict: Verdict,
@@ -275,11 +275,14 @@ pub fn evaluate(trace: &ExecutionTrace) -> Vec<Evaluation> {
         (CUST_001.id, cust_001),
     ];
     let mut out = Vec::new();
-    for step in &trace.steps {
+    // `step_index` is the step's POSITION in the trace, not its self-reported `index` field: a
+    // trace loaded from an untrusted or corrupted file may carry any `index` values (found by
+    // fuzzing `evaluate_trace`), and callers use this value to look the step up again.
+    for (position, step) in trace.steps.iter().enumerate() {
         for (id, check) in checks {
             out.push(Evaluation {
                 invariant_id: id,
-                step_index: step.index,
+                step_index: position,
                 verdict: check(step),
             });
         }
@@ -395,7 +398,9 @@ pub fn findings(
             continue;
         }
         seen.push(e.invariant_id);
-        let step = &trace.steps[e.step_index];
+        let Some(step) = trace.steps.get(e.step_index) else {
+            continue;
+        };
         let def = catalog()
             .into_iter()
             .find(|d| d.id == e.invariant_id)

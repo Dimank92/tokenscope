@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "scenario_id": "sc_3573a0f4384e7945",
+  "target": "demo-escrow-vulnerable",
+  "initial": {
+    "vault_amount": 0,
+    "vault_withheld": 0,
+    "escrow_recorded": 0,
+    "depositor_balance": 10000,
+    "destination_balance": 0,
+    "depositor_frozen": false,
+    "attacker_balance": 0,
+    "vault_frozen": false,
+    "mint_paused": null,
+    "source_cpi_guard": false,
+    "delegate_allowance": 0,
+    "hook_invocations": null,
+    "issuer_balance": 0
+  },
+  "accounts": [
+    {
+      "label": "program",
+      "address": "AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr"
+    },
+    {
+      "label": "mint",
+      "address": "D33ribj6kE24ymRHkjg4vkTgqdpm1zcNXhTQjR19Tn3N"
+    },
+    {
+      "label": "escrow_state",
+      "address": "5zsoACGCBz7aPiRurB1PtqRcAWJbMUeZwWF2L7qVMR8X"
+    },
+    {
+      "label": "escrow_authority",
+      "address": "9DbLtdL8hiu5ZX4y3UTRGKKAJ1BhxWEHpJPLJFGJPkLT"
+    },
+    {
+      "label": "depositor",
+      "address": "Fj1M5mBWsRcEYevxATdAXcmkNXNZULpxDfo6X8HUdpob"
+    },
+    {
+      "label": "depositor_source",
+      "address": "5ni4PJASra5JRu4Aoi2q5VvE6RaAGmjHAzvUsTTLoak6"
+    },
+    {
+      "label": "withdraw_destination",
+      "address": "7hJqdmiwe2BadY3eZgr6cyWJRJPnYuPsJgbqteA3Vvzr"
+    },
+    {
+      "label": "attacker",
+      "address": "3PcU8GJnv5eQ9m8dkvsqMJdPCu28WXAQdpRK2sF9YxwX"
+    },
+    {
+      "label": "attacker_destination",
+      "address": "E4DBGE5jJn9EWzCaVLRgwg4Mg6XDLmtv112PsJdqpdeZ"
+    },
+    {
+      "label": "vault",
+      "address": "E3Hmi8ohM9mRaT7nN4oAZSpCZQ2eyKMTZCpHaB9htAct"
+    }
+  ],
+  "steps": [
+    {
+      "index": 0,
+      "action": {
+        "kind": "deposit",
+        "amount": 1000
+      },
+      "before": {
+        "vault_amount": 0,
+        "vault_withheld": 0,
+        "escrow_recorded": 0,
+        "depositor_balance": 10000,
+        "destination_balance": 0,
+        "depositor_frozen": false,
+        "attacker_balance": 0,
+        "vault_frozen": false,
+        "mint_paused": null,
+        "source_cpi_guard": false,
+        "delegate_allowance": 0,
+        "hook_invocations": null,
+        "issuer_balance": 0
+      },
+      "after": {
+        "vault_amount": 980,
+        "vault_withheld": 20,
+        "escrow_recorded": 1000,
+        "depositor_balance": 9000,
+        "destination_balance": 0,
+        "depositor_frozen": false,
+        "attacker_balance": 0,
+        "vault_frozen": false,
+        "mint_paused": null,
+        "source_cpi_guard": false,
+        "delegate_allowance": 0,
+        "hook_invocations": null,
+        "issuer_balance": 0
+      },
+      "status": {
+        "status": "ok"
+      },
+      "logs": [
+        "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr invoke [1]",
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+        "Program log: Instruction: TransferChecked",
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2816 of 1398502 compute units",
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+        "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr consumed 4334 of 1400000 compute units",
+        "Program AivqrMfWFjacWBatbsscTHynxd8WcgBVUBpVuvjpu6jr success"
+      ],
+      "compute_units": 4334
+    }
+  ]
+}

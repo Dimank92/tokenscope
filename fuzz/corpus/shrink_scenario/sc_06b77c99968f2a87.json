@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "u64-max-deposit-no-fee",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "initial_balance": 18446744073709551615,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 18446744073709551615
+    },
+    {
+      "kind": "withdraw"
+    }
+  ]
+}

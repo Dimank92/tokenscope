@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "default-frozen-vault-blocks-deposit",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "extensions": [
+    {
+      "kind": "default_account_state",
+      "frozen": true
+    }
+  ],
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "thaw_vault"
+    },
+    {
+      "kind": "deposit",
+      "amount": 1000
+    }
+  ]
+}

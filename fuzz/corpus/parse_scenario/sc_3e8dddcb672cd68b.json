@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "name": "frozen-source-deposit-rejected",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 200,
+      "maximum_fee": 18446744073709551615
+    }
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "freeze_depositor"
+    },
+    {
+      "kind": "deposit",
+      "amount": 1000
+    }
+  ]
+}

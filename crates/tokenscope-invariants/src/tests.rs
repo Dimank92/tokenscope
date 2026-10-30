@@ -417,3 +417,36 @@ fn auth_001_covers_every_must_reject_action() {
     }
     assert!(!Action::Deposit { amount: 1 }.expects_rejection());
 }
+
+#[test]
+fn evaluations_use_step_position_not_the_self_reported_index() {
+    // Regression found by fuzzing: a trace whose step `index` fields do not match their positions
+    // used to make `findings` index out of bounds.
+    let mut t = trace(vec![vulnerable_deposit(), vulnerable_deposit()]);
+    t.steps[0].index = 99;
+    t.steps[1].index = 7;
+    let evals = evaluate(&t);
+    let positions: std::collections::BTreeSet<_> = evals.iter().map(|e| e.step_index).collect();
+    assert_eq!(positions, [0, 1].into_iter().collect());
+    let f = findings(&scenario(), &t, &evals);
+    assert_eq!(
+        f.len(),
+        2,
+        "one finding per violated invariant, from the first violating step"
+    );
+    assert!(
+        f.iter().all(|x| x.observed.starts_with("step 0")),
+        "{:?}",
+        f.iter().map(|x| &x.observed).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn findings_ignore_evaluations_that_point_outside_the_trace() {
+    let t = trace(vec![vulnerable_deposit()]);
+    let mut evals = evaluate(&t);
+    for e in &mut evals {
+        e.step_index = 42;
+    }
+    assert!(findings(&scenario(), &t, &evals).is_empty());
+}

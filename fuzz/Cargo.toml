@@ -1,0 +1,71 @@
+[package]
+name = "tokenscope-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tokenscope-fuzz-harness]
+path = "../crates/tokenscope-fuzz-harness"
+
+# Detached from the main workspace (it needs special RUSTFLAGS and its own lockfile).
+[workspace]
+
+[[bin]]
+name = "parse_scenario"
+path = "fuzz_targets/parse_scenario.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_finding"
+path = "fuzz_targets/parse_finding.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_campaign"
+path = "fuzz_targets/parse_campaign.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_corpus_case"
+path = "fuzz_targets/parse_corpus_case.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "evaluate_trace"
+path = "fuzz_targets/evaluate_trace.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "shrink_scenario"
+path = "fuzz_targets/shrink_scenario.rs"
+test = false
+doc = false
+bench = false
+
+# Slow: executes scenarios on the real SVM. Build with `--features engine`.
+[features]
+engine = ["tokenscope-fuzz-harness/engine"]
+
+[[bin]]
+name = "replay_scenario"
+path = "fuzz_targets/replay_scenario.rs"
+test = false
+doc = false
+bench = false
+required-features = ["engine"]

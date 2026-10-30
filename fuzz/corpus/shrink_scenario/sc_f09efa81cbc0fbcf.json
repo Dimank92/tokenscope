@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "fee-100pct-consumes-deposit",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 10000,
+      "maximum_fee": 18446744073709551615
+    }
+  },
+  "initial_balance": 1000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 500
+    }
+  ]
+}

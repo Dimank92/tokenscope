@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "large-amount",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 50,
+      "maximum_fee": 18446744073709551615
+    }
+  },
+  "initial_balance": 2000000000000000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000000000000000
+    }
+  ]
+}
