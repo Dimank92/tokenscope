@@ -15,6 +15,16 @@ tokenscope-model = { path = "../tokenscope-model" }
 tokenscope-report = { path = "../tokenscope-report" }
 tokenscope-scenarios = { path = "../tokenscope-scenarios" }
 
+# Already in the tree via crossterm; used to leave the event loop (and so restore the terminal)
+# on SIGTERM/SIGHUP.
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"
+
+[features]
+# Test-only hook: with TOKENSCOPE_TUI_FAULT=panic|error the event loop fails on its 3rd frame so
+# terminal restoration can be verified. Not enabled in default builds.
+fault-injection = []
+
 [dev-dependencies]
 serde_json.workspace = true
 tempfile = "3"

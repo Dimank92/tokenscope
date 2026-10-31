@@ -148,16 +148,27 @@ pub fn run_interactive(opts: Options) -> io::Result<()> {
 }
 
 fn event_loop(terminal: &mut ratatui::DefaultTerminal, opts: Options) -> io::Result<()> {
+    let terminate = termination_flag();
     let mut app = App::new(opts);
     load_corpus(&mut app);
     let mut rx = start(&app.opts);
     let mut t0 = Instant::now();
+    #[cfg(feature = "fault-injection")]
+    let mut frames = 0u32;
     loop {
+        if terminate.load(std::sync::atomic::Ordering::Relaxed) {
+            return Ok(()); // SIGTERM/SIGHUP: leave the loop so the terminal is restored
+        }
         drain(&mut app, &rx);
         if app.running {
             app.elapsed = t0.elapsed();
         }
         terminal.draw(|f| ui::draw(f, &app))?;
+        #[cfg(feature = "fault-injection")]
+        {
+            frames += 1;
+            inject_fault(frames)?;
+        }
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(k) if k.kind == KeyEventKind::Press => app.handle_key(k),
@@ -178,4 +189,26 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, opts: Options) -> io::Res
             return Ok(());
         }
     }
+}
+
+/// Test-only fault injection (feature `fault-injection`): fail on the third frame.
+#[cfg(feature = "fault-injection")]
+fn inject_fault(frames: u32) -> io::Result<()> {
+    match std::env::var("TOKENSCOPE_TUI_FAULT").as_deref() {
+        Ok("panic") if frames == 3 => panic!("injected panic"),
+        Ok("error") if frames == 3 => Err(io::Error::other("injected error")),
+        _ => Ok(()),
+    }
+}
+
+/// A flag set when the process receives SIGTERM or SIGHUP (unix only). Registering uses
+/// `signal-hook`'s safe API; the TUI polls the flag every 50 ms.
+fn termination_flag() -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+    let flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    #[cfg(unix)]
+    for signal in [signal_hook::consts::SIGTERM, signal_hook::consts::SIGHUP] {
+        // A registration failure only means the signal keeps its default behavior.
+        let _ = signal_hook::flag::register(signal, std::sync::Arc::clone(&flag));
+    }
+    flag
 }

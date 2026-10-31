@@ -26,6 +26,10 @@ tokenscope-scenarios = { path = "../tokenscope-scenarios" }
 tokenscope-shrinker = { path = "../tokenscope-shrinker" }
 tokenscope-tui = { path = "../tokenscope-tui" }
 
+[features]
+# Test-only; see `scripts/check-tui-terminal.py`.
+fault-injection = ["tokenscope-tui/fault-injection"]
+
 [dev-dependencies]
 tempfile = "3"
 
