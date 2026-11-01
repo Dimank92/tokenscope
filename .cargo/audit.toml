@@ -1,0 +1,9 @@
+# cargo-audit configuration. Every ignored advisory must be justified in docs/dependency-review.md.
+[advisories]
+ignore = [
+    # crypto-bigint 0.5.5 timing variability. Reached only through
+    # k256 -> solana-secp256k1-recover -> Agave syscalls -> mollusk-svm. TokenScope performs no
+    # secret-dependent big-integer operations and no secp256k1 recovery; not upgradable without
+    # upstream (k256 0.13 pins crypto-bigint 0.5). Re-check on every dependency update.
+    "RUSTSEC-2026-0387",
+]

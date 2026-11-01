@@ -10,6 +10,34 @@ use tokenscope_shrinker::{ShrinkConfig, ShrinkError, ShrinkReport, shrink};
 
 pub mod corpus;
 
+use std::{io, io::Read, path::Path};
+
+/// Largest JSON document (scenario, finding, campaign, trace, corpus case, run config) the tool
+/// will read: 32 MiB. Larger inputs are rejected before parsing to bound memory use.
+pub const MAX_DOCUMENT_BYTES: u64 = 32 * 1024 * 1024;
+
+/// Read a UTF-8 document, refusing files larger than [`MAX_DOCUMENT_BYTES`] (checked both from
+/// metadata and while reading, so a growing or non-regular file cannot bypass the limit).
+pub fn read_document(path: &Path) -> io::Result<String> {
+    let file = std::fs::File::open(path)?;
+    if file.metadata()?.len() > MAX_DOCUMENT_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("file exceeds the {MAX_DOCUMENT_BYTES}-byte document limit"),
+        ));
+    }
+    let mut text = String::new();
+    file.take(MAX_DOCUMENT_BYTES + 1)
+        .read_to_string(&mut text)?;
+    if text.len() as u64 > MAX_DOCUMENT_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("file exceeds the {MAX_DOCUMENT_BYTES}-byte document limit"),
+        ));
+    }
+    Ok(text)
+}
+
 /// Target identifiers this build can run.
 pub const TARGETS: [&str; 2] = ["demo-escrow-vulnerable", "demo-escrow-corrected"];
 

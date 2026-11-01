@@ -7,6 +7,8 @@ use crate::{ModelError, SCHEMA_VERSION};
 
 /// Maximum number of actions in one scenario (bounds work on untrusted input).
 pub const MAX_ACTIONS: usize = 64;
+/// Maximum number of mint extensions in one scenario.
+pub const MAX_EXTENSIONS: usize = 8;
 /// Maximum length of a scenario name.
 pub const MAX_NAME_LEN: usize = 128;
 /// Maximum transfer-fee basis points (100%).
@@ -275,6 +277,9 @@ impl Scenario {
         }
         if self.actions.len() > MAX_ACTIONS {
             return bad("too many actions");
+        }
+        if self.extensions.len() > MAX_EXTENSIONS {
+            return bad("too many mint extensions");
         }
         if let Some(fee) = self.mint.transfer_fee
             && fee.basis_points > MAX_BASIS_POINTS

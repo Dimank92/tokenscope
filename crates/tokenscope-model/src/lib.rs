@@ -15,8 +15,8 @@ pub use corpus::{CorpusCase, Expectation};
 pub use error::ModelError;
 pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
 pub use scenario::{
-    Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_NAME_LEN, MintExtension, MintSpec, Mismatch,
-    Scenario, TransferFeeParams,
+    Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_EXTENSIONS, MAX_NAME_LEN, MintExtension, MintSpec,
+    Mismatch, Scenario, TransferFeeParams,
 };
 pub use trace::{AccountRef, ExecutionTrace, Snapshot, StepRecord, StepStatus};
 

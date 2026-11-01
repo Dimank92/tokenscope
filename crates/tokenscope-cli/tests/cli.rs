@@ -611,3 +611,42 @@ fn strategies_extended_and_guided_run_deterministically_and_are_validated() {
     .unwrap();
     assert_eq!(tokenscope(&["run", "--config", s(&cfg)]).code, 2);
 }
+
+#[test]
+fn oversized_inputs_and_limits_are_rejected_with_usage_errors() {
+    let dir = tempfile::tempdir().unwrap();
+    // A sparse file just over the 32 MiB document limit: rejected before parsing.
+    let big = dir.path().join("big.json");
+    let f = fs::File::create(&big).unwrap();
+    f.set_len(tokenscope_core::MAX_DOCUMENT_BYTES + 1).unwrap();
+    for cmd in [["replay", s(&big)], ["minimize", s(&big)]] {
+        let o = tokenscope(&cmd);
+        assert_eq!(o.code, 2, "{}{}", o.stdout, o.stderr);
+        assert!(o.stderr.contains("document limit"), "{}", o.stderr);
+    }
+    let cfg = tokenscope(&["run", "--config", s(&big)]);
+    assert_eq!(cfg.code, 2);
+    assert!(cfg.stderr.contains("document limit"));
+
+    // The limit also protects corpus loading.
+    let corpus = dir.path().join("corpus");
+    fs::create_dir_all(&corpus).unwrap();
+    fs::File::create(corpus.join("huge.json"))
+        .unwrap()
+        .set_len(tokenscope_core::MAX_DOCUMENT_BYTES + 1)
+        .unwrap();
+    let o = tokenscope(&["corpus", "list", "--corpus", s(&corpus)]);
+    assert_ne!(o.code, 0);
+    assert!(o.stderr.contains("document limit"), "{}", o.stderr);
+
+    // Work caps: generated scenarios and shrink attempts.
+    assert_eq!(
+        tokenscope(&["run", "--target", VULN, "--count", "10001"]).code,
+        2
+    );
+    let small = dir.path().join("f.json");
+    fs::write(&small, "{}").unwrap();
+    let o = tokenscope(&["minimize", s(&small), "--max-attempts", "100001"]);
+    assert_eq!(o.code, 2);
+    assert!(o.stderr.contains("exceeds the limit"), "{}", o.stderr);
+}

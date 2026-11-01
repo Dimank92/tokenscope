@@ -107,7 +107,7 @@ impl Corpus {
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            let text = fs::read_to_string(&path).map_err(|source| CorpusError::Io {
+            let text = crate::read_document(&path).map_err(|source| CorpusError::Io {
                 path: path.clone(),
                 source,
             })?;
@@ -123,7 +123,7 @@ impl Corpus {
     /// Load one case by ID.
     pub fn get(&self, id: &str) -> Result<CorpusCase, CorpusError> {
         let path = self.path_for(id);
-        let text = match fs::read_to_string(&path) {
+        let text = match crate::read_document(&path) {
             Ok(t) => t,
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 return Err(CorpusError::NotFound(id.to_string()));

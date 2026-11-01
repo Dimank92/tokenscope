@@ -153,3 +153,25 @@ fn unknown_action_kinds_are_rejected_not_ignored() {
         .replace("unauthorized_withdraw", "drain_everything");
     assert!(Scenario::from_json(&json).is_err());
 }
+
+#[test]
+fn deeply_nested_json_is_rejected_not_a_stack_overflow() {
+    // serde_json's recursion limit (128) turns pathological nesting into an error.
+    let deep = format!("{}{}", "[".repeat(100_000), "]".repeat(100_000));
+    assert!(Scenario::from_json(&deep).is_err());
+    assert!(Finding::from_json(&deep).is_err());
+    assert!(Campaign::from_json(&deep).is_err());
+    assert!(CorpusCase::from_json(&deep).is_err());
+    let nested_obj = format!("{}1{}", "{\"a\":".repeat(50_000), "}".repeat(50_000));
+    assert!(Scenario::from_json(&nested_obj).is_err());
+}
+
+#[test]
+fn too_many_extensions_are_rejected() {
+    use tokenscope_model::{MAX_EXTENSIONS, MintExtension};
+    let mut s = scenario();
+    s.extensions = vec![MintExtension::Pausable; MAX_EXTENSIONS];
+    assert!(s.validate().is_ok());
+    s.extensions.push(MintExtension::Pausable);
+    assert!(s.validate().is_err());
+}

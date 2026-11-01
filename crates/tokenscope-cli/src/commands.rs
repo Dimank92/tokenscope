@@ -31,6 +31,7 @@ use crate::{
 
 const DEFAULT_CORPUS: &str = "fixtures/corpus";
 const MAX_GENERATED: usize = 10_000;
+const MAX_SHRINK_ATTEMPTS: usize = 100_000;
 
 /// CLI failures, each mapped to an exit code.
 #[derive(Debug, Error)]
@@ -67,7 +68,7 @@ fn usage(e: impl ToString) -> CliError {
 }
 
 fn read_file(path: &Path) -> Result<String> {
-    fs::read_to_string(path)
+    tokenscope_core::read_document(path)
         .map_err(|e| CliError::Usage(format!("cannot read {}: {e}", path.display())))
 }
 
@@ -498,6 +499,11 @@ fn minimize(
     max_attempts: usize,
     out: &mut dyn Write,
 ) -> Result<i32> {
+    if max_attempts > MAX_SHRINK_ATTEMPTS {
+        return Err(usage(format!(
+            "--max-attempts {max_attempts} exceeds the limit of {MAX_SHRINK_ATTEMPTS}"
+        )));
+    }
     let finding = Finding::from_json(&read_file(path)?).map_err(|e| model_err(path, e))?;
     let (minimized, report) = Engine::new()
         .minimize(&finding, ShrinkConfig { max_attempts })
@@ -548,7 +554,7 @@ fn report(id: &str, format: Format, dir: PathBuf, out: &mut dyn Write) -> Result
         )));
     }
     let path = dir.join(id).join("campaign.json");
-    let text = fs::read_to_string(&path).map_err(|e| {
+    let text = tokenscope_core::read_document(&path).map_err(|e| {
         usage(format!(
             "campaign {id} not found at {}: {e}",
             path.display()
