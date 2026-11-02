@@ -24,16 +24,18 @@ produce findings.
 | Crate | Responsibility | Depends on |
 |---|---|---|
 | `tokenscope-model` | Serializable, validated types: `Scenario`, `Action`, `ExecutionTrace`, `Finding`, `Campaign`, `CorpusCase`, `OutcomeClass`; content-derived IDs; schema versioning | serde, sha2, thiserror |
-| `tokenscope-executor` | `Harness`: creates Token-2022 mints/accounts via real instructions, loads program ELFs, executes with log capture, decodes real account state | mollusk-svm, spl-token-2022-interface |
+| `tokenscope-executor` | `Harness`: creates Token-2022 mints/accounts via real instructions (`MintPlan` / `MintExt` for fee, hook, default state, pausable, permanent delegate, non-transferable, close authority, interest-bearing, scaled UI), loads program ELFs (escrow, demo hook), executes with unlimited log capture, decodes real account state (frozen, paused, delegate, CPI Guard, hook counter) | mollusk-svm, spl-token-2022-interface |
 | `tokenscope-adapter` | `EscrowAdapter`: deploys the escrow, creates accounts, builds instructions, records snapshots | executor, model |
 | `tokenscope-invariants` | Pure functions over traces; documented preconditions/exceptions; finding construction | model |
-| `tokenscope-scenarios` | Built-in suite and seeded SplitMix64 generator | model |
+| `tokenscope-scenarios` | Core and extension suites, seeded generators (random, extension-aware), boundary exploration, deterministic mutation, dimension tracking and guided selection | model |
 | `tokenscope-shrinker` | Generic bounded deterministic minimizer driven by a failure predicate | model |
 | `tokenscope-core` | `Engine` (run, replay, minimize, campaign) and the on-disk corpus | adapter, invariants, shrinker |
 | `tokenscope-report` | Versioned JSON/text reports, artifact files | model |
 | `tokenscope-cli` | `tokenscope` binary; exit codes; no dependency on the TUI for its own commands | all of the above, `tokenscope-tui` for `tui` |
 | `tokenscope-tui` | Ratatui interface: pure `App` state, worker-thread `runner`, `ui` rendering, terminal `driver` | core, report, invariants |
+| `tokenscope-fuzz-harness` | Bodies of the libFuzzer targets (`fuzz/`), also run on stable by tests | all of the above (core behind the `engine` feature) |
 | `programs/demo-escrow` | On-chain demo (pinocchio), separate lockfile, built by `scripts/build-programs.sh` | pinocchio 0.11.2 |
+| `programs/demo-hook` | Transfer-hook fixture (counter, reject flag), same build script | pinocchio 0.11.2 |
 
 Design rules:
 
@@ -51,6 +53,10 @@ Design rules:
 * **Scenario/finding IDs are content hashes** so artifacts are self-verifying and dedupe naturally.
 * **Shrinker is generic** over a predicate: it is unit/property-tested without the SVM and driven by
   real execution in `tokenscope-core`.
+* **Guided generation is input-space guided**: it tracks coverage of scenario dimensions (fee class, amount class,
+  action kind, extension, pairs), never of program code; fuzz targets use real libFuzzer coverage feedback.
+* **Suites are split** (`core` fee accounting, `extensions`) so the original demonstration stays unchanged and the
+  permanent-delegate finding on both flavors is explicit.
 * **Single failure atomicity model**: Mollusk's context persists state only for successful
   instructions, matching Solana transaction semantics for the single-instruction steps used here.
 

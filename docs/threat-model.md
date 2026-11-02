@@ -5,19 +5,21 @@ own results can be wrong, and (c) the security posture of the tool.
 
 ## Target bug class
 
-Integrations that assume Token-2022 behaves like SPL Token. Implemented and demonstrated:
+Integrations that assume Token-2022 behaves like SPL Token. Implemented, demonstrated and tested:
 
-* **Nominal-vs-received accounting** under `TransferFeeConfig` (INV-ACCT-001, INV-SOLV-001,
-  INV-CONS-001).
+* **Nominal-vs-received accounting** under `TransferFeeConfig` (INV-ACCT-001, INV-SOLV-001, INV-CONS-001).
+* **Custody assumptions** broken by mint extensions: a `PermanentDelegate` can drain the vault (INV-CUST-001).
+* **Execution-time rejections** an integration must survive atomically: frozen accounts and
+  `DefaultAccountState`, `Pausable`, **CPI Guard** blocking owner-signed CPI transfers, and
+  **transfer hooks** the integration does not support (extra accounts are mandatory).
+* **Authorization and identity**: non-depositor withdrawals, substituted mint/vault/token program/authority,
+  re-initialization (INV-AUTH-001).
+* **Extension configuration**: valid and invalid combinations, initialization order, required account
+  extensions (observed against the runtime, including one place it differs from the docs).
 
-* **Frozen source accounts** (freeze/thaw by the freeze authority): deposits must fail atomically.
-* **Unauthorized actors**: a withdrawal signed by a non-depositor must be rejected (INV-AUTH-001);
-  only the depositor-signature path is modeled.
-
-Listed in the project brief but **not yet implemented**: transfer-hook account requirements,
-`DefaultAccountState`, pausable behavior, CPI Guard restrictions, delegate and permanent-delegate
-assumptions, extension incompatibilities. Failure atomicity is checked (INV-ATOM-001) but holds
-structurally on the current target.
+Failure atomicity is checked (INV-ATOM-001) but holds structurally on the current target. Not tested:
+confidential transfers, memo-required transfers, interest/scaled amounts beyond creation, metadata and
+pointer extensions, multisig authorities.
 
 ## Assumptions
 
@@ -36,7 +38,9 @@ structurally on the current target.
 | Shrinker alters the failure | every candidate is re-executed against the same predicate; the result is re-checked; tested with real execution |
 | Non-reproducible findings | scenarios are self-contained and content-addressed; runs are deterministic (tested byte-for-byte) |
 | Over-claiming | findings are `invariant_violation`; severity is advisory with rationale; `suspected_vulnerability` is never assigned automatically |
-| Missed bugs | seeded generation is not coverage-guided; absence of findings is not a security guarantee |
+| Missed bugs | generation is seeded pseudo-random or dimension-guided (input space), never program-coverage-guided; absence of findings is not a security guarantee |
+| Harness or parser panics on hostile files | document-size and nesting limits, property tests, libFuzzer targets (one real bug found and fixed); see `docs/dependency-review.md` |
+| A guided or mutated scenario reaches states the harness mishandles | 240 extension-aware generated runs on both flavors produced no setup errors; every generated scenario is validated |
 
 ## Exclusions
 
@@ -53,6 +57,12 @@ check, or upgradeability.
 * Host crates forbid `unsafe`. The on-chain demo uses `deny` (the pinocchio entrypoint macro expands
   to unsafe code).
 * The CLI makes no network requests. Program ELFs are read from a local directory.
+* The TUI restores the terminal on quit, error, panic, SIGTERM and SIGHUP (verified on a pty);
+  SIGKILL cannot be handled.
+* Test-only code paths are feature-gated: `fault-injection` (TUI) is absent from default builds, and the
+  fixture hook's unauthenticated `SetReject` instruction exists only in `programs/demo-hook`.
+* `cargo audit` finds one advisory reachable only through Agave's secp256k1 syscall path; accepted
+  with justification in `docs/dependency-review.md`.
 * The demo escrow is **intentionally vulnerable** in one flavor and must never be deployed.
 * Generated `*-keypair.json` files from `cargo build-sbf` are build artifacts and are never committed
   (the build script copies only the `.so`).

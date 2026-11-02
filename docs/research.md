@@ -99,3 +99,11 @@ benchmark against them has been run. Wording in the README must not claim unique
    earlier open question).
 7. Edition 2024 / `unsafe_code = forbid` for host crates; the SBF program uses `deny` because the
    `entrypoint!` macro expands to unsafe code.
+8. Extension behavior is **observed on the runtime first**, then compared with the docs. Differences found:
+   the docs' `NonTransferable` + `TransferFeeConfig` incompatibility example is not enforced by the bundled
+   program (accepted at creation); NonTransferable mints force `ImmutableOwner` on token accounts;
+   duplicate extension initializers before `InitializeMint` are accepted. See `docs/supported-extensions.md`.
+9. Fuzzing uses libFuzzer on the **stable** compiler with the SanitizerCoverage flags `cargo fuzz` applies,
+   because nightly was not installable in the sandbox (official hosts blocked); no AddressSanitizer.
+10. A vulnerability advisory (RUSTSEC-2026-0387) is reachable only via Agave's secp256k1 syscall path and is
+    recorded as an accepted, justified exception (`docs/dependency-review.md`).

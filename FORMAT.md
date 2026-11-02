@@ -14,7 +14,8 @@ Readers must reject unknown versions with a structured error (`ModelError::Unsup
 | `mint.decimals` | u8 | |
 | `mint.transfer_fee` | null or `{basis_points: u16 (<=10000), maximum_fee: u64}` | |
 | `initial_balance` | u64 | minted to the depositor before the first action |
-| `actions` | array (1..=64) | `{"kind":"deposit","amount":u64}`, `{"kind":"withdraw"}`, `{"kind":"freeze_depositor"}`, `{"kind":"thaw_depositor"}`, `{"kind":"unauthorized_withdraw"}`; unknown kinds are rejected |
+| `extensions` | array (0..=8), omitted when empty | `{"kind":"default_account_state","frozen":bool}`, `{"kind":"pausable"}`, `{"kind":"permanent_delegate"}`, `{"kind":"transfer_hook"}` |
+| `actions` | array (1..=64) | one of: `deposit{amount}`, `withdraw`, `freeze_depositor`, `thaw_depositor`, `unauthorized_withdraw`, `pause`, `resume`, `enable_cpi_guard`, `disable_cpi_guard`, `thaw_vault`, `approve_delegate{amount}`, `revoke_delegate`, `delegate_transfer{amount}`, `permanent_delegate_drain{amount}`, `mismatched_deposit{mismatch,amount}`, `mismatched_withdraw{mismatch}`, `reinit_escrow` (each as `{"kind":...}`); `mismatch` is `wrong_mint \| wrong_vault \| wrong_token_program \| wrong_authority`; unknown kinds are rejected |
 
 Scenario ID = `sc_` + first 8 bytes (hex) of SHA-256 over the compact JSON serialization.
 
@@ -36,7 +37,9 @@ Later milestones extend this file with campaign, report and corpus formats.
 
 `scenario_id`, `target`, `initial` and each step's `before`/`after` are *snapshots*:
 `{vault_amount, vault_withheld (u64|null), escrow_recorded, depositor_balance, destination_balance,
-depositor_frozen (bool), attacker_balance}`.
+depositor_frozen (bool), attacker_balance, vault_frozen (bool), mint_paused (bool|null),
+source_cpi_guard (bool), delegate_allowance, hook_invocations (u64|null), issuer_balance}`. The last six fields
+are optional on read (`serde(default)`) so older traces still load.
 Steps: `{index, action, before, after, status, logs[], compute_units}` where `status` is
 `{"status":"ok"}` or `{"status":"failed","error":string}`. `accounts[]` is `{label, address}`.
 
@@ -67,8 +70,14 @@ mismatches. `tokenscope corpus replay` compares the actual run to `expect`.
 {"schema_version": 1, "target": "demo-escrow", "seed": 7, "generated": 10, "builtin_suite": true}
 ```
 
-`seed` (default 0), `generated` (default 0, max 10,000) and `builtin_suite` (default true) are
-optional; unknown keys are rejected.
+`seed` (default 0), `generated` (default 0, max 10,000), `builtin_suite` (default true, meaning the core suite),
+`suite` (`none | core | extensions | all`, overrides `builtin_suite`) and `strategy`
+(`random | extended | guided`, default `random`) are optional; unknown keys are rejected.
+
+## Limits
+
+JSON documents larger than 32 MiB are rejected before parsing; nesting is limited by serde_json (128 levels);
+scenarios allow at most 64 actions, 8 extensions and a 128-byte name. See `docs/dependency-review.md`.
 
 ## Artifact directory layout
 

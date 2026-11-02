@@ -97,7 +97,39 @@ tokenscope corpus replay --all      # exit 0; exit 4 if any case no longer match
 The test `crates/tokenscope-core/tests/regression_corpus.rs` additionally checks that the committed
 scenario is exactly what minimization derives from the original noisy scenario.
 
-## 6. TUI
+## 6. Extensions and adversarial scenarios
+
+```sh
+tokenscope run --target demo-escrow-corrected --suite extensions --count 0 --out demo-out   # exit code 1
+```
+
+```text
+executed 10 | pass 4 | execution failures 5 | invariant violations 1 | setup errors 0 | findings 2
+  execution-failure      pausable-deposit-gated               (paused mint: deposit rejected, error 67)
+  execution-failure      cpi-guard-blocks-escrow-deposit      (CPI Guard blocks the escrow's CPI transfer, error 42)
+  execution-failure      default-frozen-vault-blocks-deposit  (vault frozen by default: error 17 until thawed)
+  invariant-violation    permanent-delegate-drains-vault      (INV-CUST-001, INV-SOLV-001)
+  execution-failure      delegate-allowance-lifecycle         (third transfer exceeds the allowance)
+  execution-failure      transfer-hook-mint-unsupported-by-escrow
+  pass                   mismatched-accounts-rejected         (substituted accounts and re-init all rejected)
+  pass                   repeated-withdrawals
+  pass                   u64-max-deposit-no-fee
+  pass                   u64-max-deposit-with-fee             (vulnerable flavor: invariant-violation)
+```
+
+The custody finding appears on **both** flavors, because neither inspects the mint's extensions:
+
+```text
+fd_760c848a1c181b03 INV-CUST-001 [High] target=demo-escrow-corrected scenario=sc_b550b9c0a37560c3 seed=0
+  observed: step 1: PermanentDelegateDrain { amount: 500 } reduced the vault from 1000 to 500 without an authorized withdrawal (issuer balance 0 -> 500)
+```
+
+Minimization works on extension findings: a noisy permanent-delegate failure reduces to a 1-unit deposit and a
+1-unit drain with only `PermanentDelegate` enabled (asserted against real execution in
+`crates/tokenscope-core/tests/replay_shrink.rs`). Guided and extension-aware generation:
+`tokenscope run --target demo-escrow --no-suite --count 30 --strategy guided`.
+
+## 7. TUI
 
 ```sh
 tokenscope tui                          # interactive; press ? for help, t toggles vulnerable/corrected

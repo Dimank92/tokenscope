@@ -41,23 +41,35 @@ to `suspected_vulnerability` automatically.
 * **Expected result:** holds for *both* escrow flavors, because the fee is accounted for; it
   guards the harness's own observations.
 
-## INV-AUTH-001: unauthorized withdrawal is rejected and changes nothing
+## INV-AUTH-001: adversarial operations are rejected and change nothing
 
-* **Precondition:** the step is `UnauthorizedWithdraw` (an attacker signs in the depositor's position).
-* **Expected:** the step fails, every observed quantity is unchanged, and the attacker's balance
-  does not increase.
-* **Exceptions:** only the depositor-signature check is modeled; other authority paths (e.g. a
-  forged PDA, delegates) are not exercised.
-* **Classification note:** because rejection is the desired outcome, a failed
-  `UnauthorizedWithdraw` step does not make a run an execution failure
-  (`Action::expects_rejection`).
-* **Result today:** holds on both escrow flavors (the escrow returns `EscrowError::Unauthorized`);
-  detection of a *successful* attack is covered by unit tests on synthetic traces.
+* **Precondition:** the step's action is one the escrow must reject (`Action::expects_rejection`):
+  `UnauthorizedWithdraw` (an attacker signs in the depositor's position), `MismatchedDeposit` /
+  `MismatchedWithdraw` (substituted mint, vault, token program or vault authority) and `ReinitEscrow`.
+* **Expected:** the step fails, every observed quantity is unchanged, and the attacker's balance does not increase.
+* **Exceptions:** only the depositor-signature, account-identity and initialization checks are modeled; other
+  authority paths (delegates, forged PDAs) are not exercised.
+* **Classification note:** rejection is the desired outcome, so a failed must-reject step does not make a
+  run an execution failure.
+* **Result today:** holds on both flavors; detection of a *successful* attack is covered by unit tests on
+  synthetic traces.
+
+## INV-CUST-001: the vault only shrinks through an authorized withdrawal
+
+* **Precondition:** the step succeeded and its action is not the depositor's `Withdraw`.
+* **Expected:** `vault_amount_after >= vault_amount_before`.
+* **Exceptions:** `Withdraw` is the authorized path; interest-bearing or scaled amounts are not modeled
+  (raw token amounts only).
+* **Detects:** custody-assumption breaks such as a `PermanentDelegate` drain. Severity rationale says
+  this is an integration-assumption failure caused by the mint's configuration, not necessarily a program bug.
+* **Result today:** fires on **both** flavors for `permanent-delegate-drains-vault`, together with
+  `INV-SOLV-001` (recorded balance exceeds the vault afterwards).
 
 ## Not implemented
 
-Invariants for transfer hooks, default account state, pausable, CPI Guard, delegates and permanent
-delegates.
+Invariants specific to transfer hooks, CPI Guard and pausable behavior: those extensions are
+exercised through scenarios and execution-failure outcomes (the escrow cannot serve them), not through a
+dedicated invariant.
 
 ## Adding an invariant
 

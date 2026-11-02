@@ -9,8 +9,10 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** early (version 0.1.0). One target (a demo escrow), Token-2022 `TransferFeeConfig`
-> plus freeze/thaw of token accounts, five invariants. See [Limitations](#limitations) and
+> **Status:** early (version 0.1.0). One target (a demo escrow) and six invariants. Token-2022
+> behavior verified by executable tests: transfer fees, freeze/thaw, DefaultAccountState, Pausable,
+> transfer hooks (fixture hook), CPI Guard, delegates, the permanent delegate and extension
+> compatibility. See [Limitations](#limitations) and
 > [docs/supported-extensions.md](docs/supported-extensions.md) before relying on any result.
 > TokenScope does not detect vulnerabilities in general, and an invariant violation is **not**
 > proof of exploitability. It is also not the first tool in this space; see
@@ -64,7 +66,7 @@ cargo test --workspace               # all tests (needs the built programs)
 |---|---|---|
 | `doctor` | verify the environment, incl. a real fee transfer | 0 ok, 3 problem |
 | `inspect [--target T]` | show target configuration and invariants | 0 |
-| `run --target T --seed N [--count N] [--no-suite] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
+| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
 | `replay <scenario-file>` | re-run one scenario | 0 / 1 / 2 / 3 |
 | `minimize <finding-file> [--out F] [--max-attempts N]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
 | `report <campaign-id> --format json\|text` | print a stored report | 0, 2 |
@@ -72,6 +74,13 @@ cargo test --workspace               # all tests (needs the built programs)
 | `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
+
+Suites: `core` (the original fee-accounting scenarios; default), `extensions` (extension, authorization and
+boundary scenarios), `all`, `none`. Note that the corrected escrow still reports a custody finding in the
+`extensions` suite (`permanent-delegate-drains-vault`): neither flavor checks the mint's extensions.
+Strategies: `random` (seeded fee scenarios), `extended` (extension-aware templates), `guided` (mutates the
+suites and the regression corpus and keeps only scenarios that add a new *input-space* cell; it is not
+guided by program coverage).
 
 ## Repository layout
 
@@ -81,16 +90,35 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 
 ## Limitations
 
-* One target program (the demo escrow). Token-2022 coverage is `TransferFeeConfig` and
-  freeze/thaw of token accounts. Transfer hooks, default account state, pausable, CPI Guard,
-  delegates and permanent delegates are **not implemented**; no support is claimed.
-* Authorization is modeled only as the depositor-signature check (`INV-AUTH-001`).
-* Scenario generation is seeded pseudo-random, not coverage-guided.
+* One target program (the demo escrow). Token-2022 coverage is listed with its limits in
+  [docs/supported-extensions.md](docs/supported-extensions.md); confidential transfers, memo-required
+  transfers, metadata/pointer extensions and multisig are **not covered**. The transfer-hook tests use a
+  fixture hook program, not a production one.
+* Authorization is modeled as the depositor-signature, account-identity and initialization checks
+  (`INV-AUTH-001`); other authority paths are not exercised.
+* Scenario generation is seeded pseudo-random or *input-space*-guided; it never observes program coverage.
+  The libFuzzer targets (`fuzz/`) are coverage-guided but fuzz the tool's parsers, shrinker and invariant
+  engine, not the on-chain programs; the real-SVM `replay_scenario` target has not been fuzzed.
+* Fuzzing ran for minutes on the stable compiler without AddressSanitizer; benchmarks come from one shared VM.
+* `cargo audit` reports one advisory reachable only via Mollusk's Agave dependency (accepted and justified in
+  [docs/dependency-review.md](docs/dependency-review.md)). The CI workflow has been written and syntax-checked but
+  not executed.
 * Token-2022 is the mainnet-snapshot ELF bundled by `mollusk-svm-programs-token-2022` 0.16.2; it
   may differ from other Token-2022 builds.
 * Execution is instruction-level (no signature verification, fees or blockhash); see
   `docs/experiments/svm-framework.md`.
 * An invariant violation shows a property failing on observed state, not that funds can be stolen.
+
+## Verification scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/build-programs.sh` | build escrow (two flavors) and demo hook from source |
+| `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (44 checks) |
+| `scripts/check-tui-terminal.py` | verify terminal restoration on quit, error, panic, SIGTERM, SIGHUP (pty) |
+| `scripts/fuzz.sh <target> [s]` | libFuzzer run on the stable compiler ([fuzz/README.md](fuzz/README.md)) |
+| `cargo run --release -p tokenscope-core --example bench` | benchmarks ([docs/benchmarks.md](docs/benchmarks.md)) |
+| `scripts/export-patches.sh`, `scripts/verify-reconstruction.sh` | ordered patch series and clean-room check |
 
 ## Reproducibility and patch delivery
 

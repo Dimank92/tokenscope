@@ -12,6 +12,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+CI (`.github/workflows/ci.yml`: lint, test with release/TUI/fuzz-smoke checks, audit) mirrors these gates; it has not
+been executed outside the development sandbox. Other checks: `scripts/release-check.sh`,
+`scripts/check-tui-terminal.py`, `scripts/fuzz.sh`, `cargo audit` (exceptions live in `.cargo/audit.toml` with their
+justification in `docs/dependency-review.md`).
+
 Never silence a warning or weaken a test to get a green build. If a test expectation is wrong,
 fix the expectation and say why in the commit message.
 

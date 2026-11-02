@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: never
+  RUSTFLAGS: ""
+  PLATFORM_TOOLS_SHA256: 7b82eb420b5aebd1e5590db0ae25c523eca06724d4238ae02139690535636c37
+
+jobs:
+  # Formatting and lints need no on-chain programs.
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.99.0
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt clippy && rustup default 1.99.0
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: lint-${{ hashFiles('Cargo.lock') }}
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Clippy with the test-only fault-injection feature
+        run: cargo clippy -p tokenscope-tui -p tokenscope-cli --all-targets --features tokenscope-tui/fault-injection -- -D warnings
+
+  # Builds the demo programs from source, then runs every test and the release/TUI checks.
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.99.0
+        run: rustup toolchain install 1.99.0 --profile minimal && rustup default 1.99.0
+      - name: Install build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-build-sbf
+            ~/.cache/solana
+            target
+          key: test-${{ hashFiles('Cargo.lock', 'programs/*/Cargo.lock') }}-pt1.58-bsbf4.5.0
+      - name: Install cargo-build-sbf 4.5.0
+        run: command -v cargo-build-sbf || cargo install cargo-build-sbf --version 4.5.0 --locked
+      - name: Install Solana platform-tools v1.58 (checksum verified)
+        run: |
+          set -eu
+          if [ ! -x "$HOME/.cache/solana/v1.58/platform-tools/rust/bin/rustc" ]; then
+            curl -fsSL -o /tmp/pt.tar.bz2 https://github.com/anza-xyz/platform-tools/releases/download/v1.58/platform-tools-linux-x86_64.tar.bz2
+            echo "$PLATFORM_TOOLS_SHA256  /tmp/pt.tar.bz2" | sha256sum -c -
+            mkdir -p "$HOME/.cache/solana/v1.58/platform-tools"
+            tar xjf /tmp/pt.tar.bz2 -C "$HOME/.cache/solana/v1.58/platform-tools"
+          fi
+      - name: Build the demo programs from source
+        run: ./scripts/build-programs.sh
+      - run: cargo test --workspace
+      - name: Release build, command/exit-code check
+        run: |
+          cargo build --release -p tokenscope-cli
+          ./scripts/release-check.sh target/release/tokenscope
+      - name: TUI terminal restoration (pty)
+        run: |
+          cargo build -p tokenscope-cli
+          cargo build -p tokenscope-cli --features fault-injection --target-dir target/fault
+          python3 scripts/check-tui-terminal.py --normal-binary target/debug/tokenscope --fault-binary target/fault/debug/tokenscope
+      - name: Fuzz smoke test (30 s on the stable compiler, no ASan)
+        run: ./scripts/fuzz.sh parse_scenario 30
+
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit the host workspace and the on-chain programs
+        run: |
+          cargo audit
+          cargo audit -f programs/demo-escrow/Cargo.lock
+          cargo audit -f programs/demo-hook/Cargo.lock
