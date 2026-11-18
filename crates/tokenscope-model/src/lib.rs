@@ -7,6 +7,7 @@ mod campaign;
 mod corpus;
 mod error;
 mod finding;
+mod reference;
 mod scenario;
 mod trace;
 
@@ -14,6 +15,7 @@ pub use campaign::{Campaign, RunRecord, Totals};
 pub use corpus::{CorpusCase, Expectation};
 pub use error::ModelError;
 pub use finding::{Finding, OutcomeClass, Reproduction, Severity, StateDelta};
+pub use reference::{ReferenceError, TokenReferenceModel};
 pub use scenario::{
     Action, MAX_ACTIONS, MAX_BASIS_POINTS, MAX_EXTENSIONS, MAX_NAME_LEN, MintExtension, MintSpec,
     Mismatch, Scenario, TransferFeeParams,
