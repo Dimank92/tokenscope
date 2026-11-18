@@ -11,7 +11,7 @@ use tokenscope_report::{build_report, render_json, render_text};
 use tokenscope_shrinker::{ShrinkConfig, shrink};
 
 /// Names of all targets (the `fuzz/fuzz_targets/<name>.rs` files).
-pub const TARGETS: [&str; 7] = [
+pub const TARGETS: [&str; 8] = [
     "parse_scenario",
     "parse_finding",
     "parse_campaign",
@@ -19,6 +19,7 @@ pub const TARGETS: [&str; 7] = [
     "evaluate_trace",
     "shrink_scenario",
     "replay_scenario",
+    "reference_model_scenario",
 ];
 
 /// Run a target by name (used by the tests).
@@ -31,6 +32,7 @@ pub fn run_target(name: &str, data: &[u8]) {
         "evaluate_trace" => evaluate_trace(data),
         "shrink_scenario" => shrink_scenario(data),
         "replay_scenario" => replay_scenario(data),
+        "reference_model_scenario" => reference_model_scenario(data),
         other => panic!("unknown fuzz target {other}"),
     }
 }
@@ -151,6 +153,35 @@ pub fn replay_scenario(data: &[u8]) {
                 );
             }
             _ => assert!(run.trace.is_some() && run.setup_error.is_none()),
+        }
+    }
+}
+
+/// Reference model on arbitrary scenario: exercises pure state transitions,
+/// fee ceiling calculations, freeze/thaw, and asserts strict state invariants.
+pub fn reference_model_scenario(data: &[u8]) {
+    let Some(t) = text(data) else { return };
+    let Ok(s) = Scenario::from_json(t) else {
+        return;
+    };
+    let is_corrected = s.target.contains("corrected");
+    let mut model = tokenscope_model::TokenReferenceModel::from_scenario(&s);
+    let initial_user = model.snapshot.depositor_balance;
+    let initial_vault = model.snapshot.vault_amount;
+    let initial_total = initial_user.saturating_add(initial_vault);
+
+    for action in &s.actions {
+        let before = model.snapshot;
+        match model.step(*action, is_corrected) {
+            Ok(after) => {
+                assert_eq!(model.snapshot, after);
+                assert!(after.depositor_balance <= initial_total);
+                assert!(after.vault_amount <= initial_total);
+            }
+            Err(_) => {
+                // Atomic rollback: error preserves exact snapshot before step
+                assert_eq!(model.snapshot, before);
+            }
         }
     }
 }

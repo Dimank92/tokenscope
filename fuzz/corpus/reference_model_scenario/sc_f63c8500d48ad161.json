@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "mismatched-accounts-rejected",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "mismatched_deposit",
+      "mismatch": "wrong_mint",
+      "amount": 5
+    },
+    {
+      "kind": "mismatched_deposit",
+      "mismatch": "wrong_vault",
+      "amount": 5
+    },
+    {
+      "kind": "mismatched_deposit",
+      "mismatch": "wrong_token_program",
+      "amount": 5
+    },
+    {
+      "kind": "mismatched_withdraw",
+      "mismatch": "wrong_mint"
+    },
+    {
+      "kind": "mismatched_withdraw",
+      "mismatch": "wrong_vault"
+    },
+    {
+      "kind": "mismatched_withdraw",
+      "mismatch": "wrong_token_program"
+    },
+    {
+      "kind": "mismatched_withdraw",
+      "mismatch": "wrong_authority"
+    },
+    {
+      "kind": "reinit_escrow"
+    }
+  ]
+}

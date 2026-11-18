@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "two-deposits-accumulate",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 300,
+      "maximum_fee": 18446744073709551615
+    }
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "deposit",
+      "amount": 2000
+    }
+  ]
+}

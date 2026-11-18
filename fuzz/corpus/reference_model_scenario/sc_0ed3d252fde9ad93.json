@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "delegate-allowance-lifecycle",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "approve_delegate",
+      "amount": 300
+    },
+    {
+      "kind": "delegate_transfer",
+      "amount": 200
+    },
+    {
+      "kind": "delegate_transfer",
+      "amount": 200
+    },
+    {
+      "kind": "revoke_delegate"
+    }
+  ]
+}

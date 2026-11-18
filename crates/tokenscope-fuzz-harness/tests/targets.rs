@@ -87,6 +87,8 @@ fn seeds_exercise_the_accepting_paths() {
     assert!(ok("parse_campaign", &|s| Campaign::from_json(s).is_ok()));
     assert!(ok("parse_corpus_case", &|s| CorpusCase::from_json(s).is_ok()));
     assert!(ok("evaluate_trace", &|s| ExecutionTrace::from_json(s).is_ok()));
+    assert!(ok("reference_model_scenario", &|s| Scenario::from_json(s)
+        .is_ok()));
 }
 
 #[test]

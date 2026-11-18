@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "permanent-delegate-drains-vault",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "extensions": [
+    {
+      "kind": "permanent_delegate"
+    }
+  ],
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "permanent_delegate_drain",
+      "amount": 500
+    }
+  ]
+}
