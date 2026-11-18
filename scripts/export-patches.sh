@@ -13,7 +13,7 @@ case "$OUT" in "$SRC"|"$SRC"/*) echo "delivery dir must be outside the source re
 rm -rf "$OUT/patches"; mkdir -p "$OUT/patches"
 git -C "$SRC" format-patch --root --binary -N -o "$OUT/patches" >/dev/null
 ( cd "$OUT/patches" && ls -1 *.patch ) > "$OUT/series"
-git -C "$SRC" log --reverse --format='%H' > "$OUT/.commits"
+git -C "$SRC" log --reverse --no-merges --format='%H' > "$OUT/.commits"
 
 STATUS="$OUT/verification.tsv"   # optional: <patch-filename><TAB><status>
 {
@@ -55,9 +55,10 @@ Patches do not create a repository; start from an empty directory.
 DELIVERY=/absolute/path/to/this/directory     # contains `series` and `patches/`
 mkdir tokenscope-rebuilt && cd tokenscope-rebuilt
 git init -b main
+git config core.autocrlf false
 git config user.name  "Your Name"             # `git am` needs a committer identity
 git config user.email "you@example.com"
-while read -r p; do git am "$DELIVERY/patches/$p" || break; done < "$DELIVERY/series"
+while read -r p; do git am "$DELIVERY/patches/$p" || git am --allow-empty || break; done < "$DELIVERY/series"
 git log --oneline | wc -l                      # must equal the number of lines in `series`
 ```
 The explicit `series` file defines order; do not rely on shell wildcard ordering.

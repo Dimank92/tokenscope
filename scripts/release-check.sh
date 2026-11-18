@@ -6,6 +6,7 @@
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BIN=${1:-"$ROOT/target/release/tokenscope"}
+[ -x "$BIN" ] || [ ! -x "$BIN.exe" ] || BIN="$BIN.exe"
 [ -x "$BIN" ] || { echo "binary not found: $BIN" >&2; exit 2; }
 export TOKENSCOPE_PROGRAM_DIR=${TOKENSCOPE_PROGRAM_DIR:-"$ROOT/target/sbf-programs"}
 W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
