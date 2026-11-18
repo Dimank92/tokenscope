@@ -13,6 +13,7 @@ use solana_svm_log_collector::LogCollector;
 use spl_token_2022_interface::{
     extension::{
         BaseStateWithExtensions, ExtensionType, StateWithExtensions, account_len,
+        group_member_pointer, group_pointer, metadata_pointer,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig, instruction as fee_ix},
     },
     instruction as token_ix,
@@ -45,6 +46,15 @@ pub struct TokenAccountView {
     pub delegate: Option<Pubkey>,
     /// Remaining amount the delegate may spend.
     pub delegated_amount: u64,
+}
+
+/// Decoded view of a mint pointer extension (metadata, group, or group member).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PointerView {
+    /// Authority that can update the pointer, or `None` if immutable.
+    pub authority: Option<Pubkey>,
+    /// Address the pointer directs to, or `None` if unset.
+    pub address: Option<Pubkey>,
 }
 
 /// Execution environment holding a Mollusk SVM and its persistent account store.
@@ -619,6 +629,124 @@ impl Harness {
             .get_extension::<TransferFeeConfig>()
             .ok()
             .map(|c| u64::from(c.withheld_amount)))
+    }
+
+    /// Read the `MetadataPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_metadata_pointer(&self, mint: &Pubkey) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<metadata_pointer::MetadataPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .metadata_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Read the `GroupPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_group_pointer(&self, mint: &Pubkey) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<group_pointer::GroupPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .group_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Read the `GroupMemberPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_group_member_pointer(
+        &self,
+        mint: &Pubkey,
+    ) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<group_member_pointer::GroupMemberPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .member_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Instruction to update the metadata pointer on `mint`.
+    pub fn update_metadata_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        metadata_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        metadata_pointer::instruction::update(&token, mint, authority, &[], metadata_address)
+            .map_err(|e| ExecError::Setup {
+                step: "update-metadata-pointer-ix".into(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Instruction to update the group pointer on `mint`.
+    pub fn update_group_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        group_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        group_pointer::instruction::update(&token, mint, authority, &[], group_address).map_err(
+            |e| ExecError::Setup {
+                step: "update-group-pointer-ix".into(),
+                detail: e.to_string(),
+            },
+        )
+    }
+
+    /// Instruction to update the group member pointer on `mint`.
+    pub fn update_group_member_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        member_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        group_member_pointer::instruction::update(&token, mint, authority, &[], member_address)
+            .map_err(|e| ExecError::Setup {
+                step: "update-group-member-pointer-ix".into(),
+                detail: e.to_string(),
+            })
     }
 
     /// Advance the harness clock to the first slot of the given epoch.
