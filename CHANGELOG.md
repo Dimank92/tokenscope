@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Target adapter architecture:**
   * Added stable `TargetAdapter` trait in `tokenscope-adapter` decoupling program deployment and trace capture from the engine.
   * Implemented `TargetAdapter` for `EscrowAdapter` and re-exported via `tokenscope-core`.
+  * Added `run_scenario_with_adapter` and `run_campaign_with_adapter` in `Engine`, verified with a custom target acceptance test.
 * **Extensible invariant engine:**
   * Added `Invariant` trait and dynamic `InvariantRegistry` in `tokenscope-invariants` allowing registration and evaluation of custom invariants alongside built-ins.
   * Maintained full backward compatibility for free functions `evaluate()` and `catalog()`, re-exported via `tokenscope-core`.
@@ -54,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added property-based determinism and validity test in `tokenscope-scenarios`.
 * **Patch delivery and clean-room verification:**
   * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
-  * Regenerated delivery patch series (67 patches in `../tokenscope-patches`).
+  * Regenerated delivery patch series (68 patches in `../tokenscope-patches`).
   * Automated clean-room verification verifying applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
 
 #### Round 2 — Hooks, State, Invariants, and Fuzzing

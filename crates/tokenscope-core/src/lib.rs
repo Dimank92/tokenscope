@@ -78,9 +78,12 @@ impl Engine {
         }
     }
 
-    /// Run one scenario. Setup problems (unknown target, missing program, invalid scenario) are
-    /// classified as [`OutcomeClass::SetupError`] and never produce findings.
-    pub fn run_scenario(&self, scenario: &Scenario) -> RunRecord {
+    /// Run one scenario using a custom target adapter.
+    pub fn run_scenario_with_adapter(
+        &self,
+        scenario: &Scenario,
+        adapter: &dyn TargetAdapter,
+    ) -> RunRecord {
         let scenario_id = scenario.id();
         let setup_error = |detail: String| RunRecord {
             scenario: scenario.clone(),
@@ -90,14 +93,7 @@ impl Engine {
             trace: None,
             findings: vec![],
         };
-        let Some(flavor) = EscrowFlavor::from_target_id(&scenario.target) else {
-            return setup_error(format!(
-                "unknown target `{}` (known: {})",
-                scenario.target,
-                TARGETS.join(", ")
-            ));
-        };
-        match self.adapter(flavor).run(scenario) {
+        match adapter.run(scenario) {
             Err(e) => setup_error(e.to_string()),
             Ok(trace) => {
                 let evaluations = evaluate(&trace);
@@ -111,6 +107,27 @@ impl Engine {
                 }
             }
         }
+    }
+
+    /// Run one scenario. Setup problems (unknown target, missing program, invalid scenario) are
+    /// classified as [`OutcomeClass::SetupError`] and never produce findings.
+    pub fn run_scenario(&self, scenario: &Scenario) -> RunRecord {
+        let Some(flavor) = EscrowFlavor::from_target_id(&scenario.target) else {
+            return RunRecord {
+                scenario: scenario.clone(),
+                scenario_id: scenario.id(),
+                outcome: OutcomeClass::SetupError,
+                setup_error: Some(format!(
+                    "unknown target `{}` (known: {})",
+                    scenario.target,
+                    TARGETS.join(", ")
+                )),
+                trace: None,
+                findings: vec![],
+            };
+        };
+        let adapter = self.adapter(flavor);
+        self.run_scenario_with_adapter(scenario, &adapter)
     }
 
     /// Re-run a finding's reproduction scenario and report whether the same invariant is still
@@ -142,6 +159,21 @@ impl Engine {
         let mut out = finding.clone();
         out.minimized = Some(report.minimized.clone());
         Ok((out, report))
+    }
+
+    /// Run every scenario in order using a custom target adapter and bundle the results.
+    pub fn run_campaign_with_adapter(
+        &self,
+        target: &str,
+        seed: u64,
+        scenarios: &[Scenario],
+        adapter: &dyn TargetAdapter,
+    ) -> Campaign {
+        let runs = scenarios
+            .iter()
+            .map(|s| self.run_scenario_with_adapter(s, adapter))
+            .collect();
+        Campaign::new(target.to_string(), seed, runs)
     }
 
     /// Run every scenario in order and bundle the results.
