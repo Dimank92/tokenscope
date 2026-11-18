@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Target adapter architecture:**
   * Added stable `TargetAdapter` trait in `tokenscope-adapter` decoupling program deployment and trace capture from the engine.
   * Implemented `TargetAdapter` for `EscrowAdapter` and re-exported via `tokenscope-core`.
+* **Extensible invariant engine:**
+  * Added `Invariant` trait and dynamic `InvariantRegistry` in `tokenscope-invariants` allowing registration and evaluation of custom invariants alongside built-ins.
+  * Maintained full backward compatibility for free functions `evaluate()` and `catalog()`, re-exported via `tokenscope-core`.
 * **Patch delivery and clean-room verification:**
   * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
   * Regenerated delivery patch series (60 patches in `../tokenscope-patches`).
