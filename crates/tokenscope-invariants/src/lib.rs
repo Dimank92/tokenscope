@@ -262,32 +262,106 @@ fn cust_001(step: &StepRecord) -> Verdict {
     }
 }
 
-type Check = (&'static str, fn(&StepRecord) -> Verdict);
+/// Trait for an invariant implementation.
+pub trait Invariant: Send + Sync {
+    /// Invariant definition metadata.
+    fn def(&self) -> InvariantDef;
+    /// Evaluate the invariant against a single step.
+    fn evaluate(&self, step: &StepRecord) -> Verdict;
+}
+
+/// A wrapper around a function pointer and definition implementing [`Invariant`].
+#[derive(Clone, Copy)]
+pub struct FnInvariant {
+    def: InvariantDef,
+    check: fn(&StepRecord) -> Verdict,
+}
+
+impl FnInvariant {
+    /// Create a new invariant from a definition and evaluation function.
+    pub const fn new(def: InvariantDef, check: fn(&StepRecord) -> Verdict) -> Self {
+        Self { def, check }
+    }
+}
+
+impl Invariant for FnInvariant {
+    fn def(&self) -> InvariantDef {
+        self.def
+    }
+
+    fn evaluate(&self, step: &StepRecord) -> Verdict {
+        (self.check)(step)
+    }
+}
+
+/// Dynamic registry of invariants to evaluate against execution traces.
+pub struct InvariantRegistry {
+    invariants: Vec<Box<dyn Invariant>>,
+}
+
+impl Default for InvariantRegistry {
+    fn default() -> Self {
+        Self {
+            invariants: vec![
+                Box::new(FnInvariant::new(ACCT_001, acct_001)),
+                Box::new(FnInvariant::new(SOLV_001, solv_001)),
+                Box::new(FnInvariant::new(ATOM_001, atom_001)),
+                Box::new(FnInvariant::new(CONS_001, cons_001)),
+                Box::new(FnInvariant::new(AUTH_001, auth_001)),
+                Box::new(FnInvariant::new(CUST_001, cust_001)),
+            ],
+        }
+    }
+}
+
+impl InvariantRegistry {
+    /// Create an empty registry with no invariants.
+    pub fn empty() -> Self {
+        Self {
+            invariants: Vec::new(),
+        }
+    }
+
+    /// Register a new invariant.
+    pub fn register(&mut self, invariant: impl Invariant + 'static) {
+        self.invariants.push(Box::new(invariant));
+    }
+
+    /// List all registered invariant definitions.
+    pub fn catalog(&self) -> Vec<InvariantDef> {
+        self.invariants.iter().map(|i| i.def()).collect()
+    }
+
+    /// Number of registered invariants.
+    pub fn len(&self) -> usize {
+        self.invariants.len()
+    }
+
+    /// Whether the registry has no invariants.
+    pub fn is_empty(&self) -> bool {
+        self.invariants.is_empty()
+    }
+
+    /// Evaluate all registered invariants on every step of `trace`.
+    pub fn evaluate(&self, trace: &ExecutionTrace) -> Vec<Evaluation> {
+        let mut out = Vec::new();
+        for (position, step) in trace.steps.iter().enumerate() {
+            for inv in &self.invariants {
+                let def = inv.def();
+                out.push(Evaluation {
+                    invariant_id: def.id,
+                    step_index: position,
+                    verdict: inv.evaluate(step),
+                });
+            }
+        }
+        out
+    }
+}
 
 /// Evaluate every invariant on every step of `trace`, in step then catalog order.
 pub fn evaluate(trace: &ExecutionTrace) -> Vec<Evaluation> {
-    let checks: [Check; 6] = [
-        (ACCT_001.id, acct_001),
-        (SOLV_001.id, solv_001),
-        (ATOM_001.id, atom_001),
-        (CONS_001.id, cons_001),
-        (AUTH_001.id, auth_001),
-        (CUST_001.id, cust_001),
-    ];
-    let mut out = Vec::new();
-    // `step_index` is the step's POSITION in the trace, not its self-reported `index` field: a
-    // trace loaded from an untrusted or corrupted file may carry any `index` values (found by
-    // fuzzing `evaluate_trace`), and callers use this value to look the step up again.
-    for (position, step) in trace.steps.iter().enumerate() {
-        for (id, check) in checks {
-            out.push(Evaluation {
-                invariant_id: id,
-                step_index: position,
-                verdict: check(step),
-            });
-        }
-    }
-    out
+    InvariantRegistry::default().evaluate(trace)
 }
 
 /// Run-level classification from evaluations and step statuses. `SetupError` is decided earlier

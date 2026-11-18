@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 pub use tokenscope_adapter::TargetAdapter;
 use tokenscope_adapter::{EscrowAdapter, EscrowFlavor};
+pub use tokenscope_invariants::{FnInvariant, Invariant, InvariantRegistry};
 use tokenscope_invariants::{classify, evaluate, findings};
 use tokenscope_model::{Campaign, Finding, OutcomeClass, RunRecord, Scenario};
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError, ShrinkReport, shrink};
