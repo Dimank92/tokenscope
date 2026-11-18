@@ -48,6 +48,7 @@ expect 1 "run both flavors" -- run --target demo-escrow --count 0 --out "$W/o3"
 expect 1 "run extensions suite (custody finding)" -- run --target demo-escrow-corrected --suite extensions --count 0 --out "$W/o4"
 expect_either "0 1" "run guided strategy (a batch need not contain a violation)" -- run --target demo-escrow-vulnerable --no-suite --count 6 --strategy guided --out "$W/o5"
 expect 0 "run extended strategy, corrected, 1 scenario" -- run --target demo-escrow-corrected --no-suite --count 1 --strategy extended --seed 4 --out "$W/o6"
+expect 0 "run stateful strategy, corrected, 1 scenario" -- run --target demo-escrow-corrected --no-suite --count 1 --strategy stateful --seed 5 --out "$W/o6s"
 expect 2 "run with bad suite" -- run --target demo-escrow-vulnerable --suite nope
 expect 2 "run with nothing to run" -- run --target demo-escrow-vulnerable --no-suite --count 0
 

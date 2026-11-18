@@ -9,7 +9,7 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 250 passing workspace
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 251 passing workspace
 > tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
 > `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
 > transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
@@ -69,7 +69,7 @@ cargo test --workspace               # all tests (needs the built programs)
 |---|---|---|
 | `doctor` | verify the environment, incl. a real fee transfer | 0 ok, 3 problem |
 | `inspect [--target T]` | show target configuration and invariants | 0 |
-| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
+| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided\|stateful] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
 | `replay <scenario-file>` | re-run one scenario | 0 / 1 / 2 / 3 |
 | `minimize <finding-file> [--out F] [--max-attempts N]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
 | `report <campaign-id> --format json\|text` | print a stored report | 0, 2 |
@@ -83,7 +83,7 @@ boundary scenarios), `all`, `none`. Note that the corrected escrow still reports
 `extensions` suite (`permanent-delegate-drains-vault`): neither flavor checks the mint's extensions.
 Strategies: `random` (seeded fee scenarios), `extended` (extension-aware templates), `guided` (mutates the
 suites and the regression corpus and keeps only scenarios that add a new *input-space* cell; it is not
-guided by program coverage).
+guided by program coverage), and `stateful` (model-based state-machine generation driven by `TokenReferenceModel`).
 
 ## Repository layout
 

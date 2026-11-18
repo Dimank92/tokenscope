@@ -608,6 +608,23 @@ fn strategies_extended_and_guided_run_deterministically_and_are_validated() {
         g.stdout
     );
 
+    let st = tokenscope(&[
+        "run",
+        "--target",
+        VULN,
+        "--no-suite",
+        "--seed",
+        "7",
+        "--count",
+        "3",
+        "--strategy",
+        "stateful",
+        "--out",
+        s(&dir.path().join("st")),
+    ]);
+    assert!(st.code == 0 || st.code == 1, "{}{}", st.stdout, st.stderr);
+    assert!(st.stdout.contains("executed 3 "), "{}", st.stdout);
+
     assert_eq!(
         tokenscope(&["run", "--target", VULN, "--strategy", "magic"]).code,
         2

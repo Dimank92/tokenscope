@@ -71,8 +71,9 @@ pub enum Command {
         #[arg(long, default_value_t = 20, conflicts_with = "config")]
         count: usize,
         /// How scenarios are generated: `random` (fee scenarios), `extended` (extension and
-        /// adversarial templates) or `guided` (dimension-guided selection seeded by the built-in
-        /// suites and the regression corpus; not code-coverage-guided).
+        /// adversarial templates), `guided` (dimension-guided selection seeded by the built-in
+        /// suites and the regression corpus; not code-coverage-guided), or `stateful` (model-based
+        /// sequence generation using TokenReferenceModel).
         #[arg(long, default_value = "random", conflicts_with = "config")]
         strategy: String,
         /// Corpus directory whose scenarios seed `--strategy guided` (default: `fixtures/corpus`).

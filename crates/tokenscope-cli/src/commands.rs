@@ -21,6 +21,7 @@ use tokenscope_model::{
 use tokenscope_report::{render_json, render_markdown, render_sarif, render_text, write_artifacts};
 use tokenscope_scenarios::{
     SuiteSelection, builtin_suite, extension_suite, generate, generate_extended, generate_guided,
+    generate_stateful,
 };
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError};
 
@@ -407,6 +408,7 @@ enum Strategy {
     Random,
     Extended,
     Guided,
+    Stateful,
 }
 
 fn parse_strategy(name: &str) -> Result<Strategy> {
@@ -414,8 +416,9 @@ fn parse_strategy(name: &str) -> Result<Strategy> {
         "random" => Ok(Strategy::Random),
         "extended" => Ok(Strategy::Extended),
         "guided" => Ok(Strategy::Guided),
+        "stateful" => Ok(Strategy::Stateful),
         other => Err(usage(format!(
-            "unknown strategy `{other}`; expected random, extended or guided"
+            "unknown strategy `{other}`; expected random, extended, guided or stateful"
         ))),
     }
 }
@@ -457,6 +460,7 @@ fn run_campaigns(spec: &RunSpec, out_path: PathBuf, out: &mut dyn Write) -> Resu
         match spec.strategy {
             Strategy::Random => scenarios.extend(generate(spec.seed, spec.count, &t)),
             Strategy::Extended => scenarios.extend(generate_extended(spec.seed, spec.count, &t)),
+            Strategy::Stateful => scenarios.extend(generate_stateful(spec.seed, spec.count, &t)),
             Strategy::Guided => {
                 // Seeds: both built-in suites and the corpus, so the batch complements them.
                 let mut seeds = SuiteSelection::All.scenarios(&t);
