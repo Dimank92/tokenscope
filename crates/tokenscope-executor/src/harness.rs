@@ -282,6 +282,36 @@ impl Harness {
         Ok(account)
     }
 
+    /// Create and initialize a Token-2022 multisig account.
+    pub fn create_multisig(
+        &self,
+        label: &str,
+        signers: &[&Pubkey],
+        m: u8,
+    ) -> Result<Pubkey, ExecError> {
+        use solana_program_pack::Pack;
+        let multisig = derive_address(&format!("multisig/{label}"));
+        let token = spl_token_2022_interface::id();
+        let space = spl_token_2022_interface::state::Multisig::LEN;
+        let ixs = [
+            solana_system_interface::instruction::create_account(
+                &self.payer,
+                &multisig,
+                self.rent_for(space),
+                space as u64,
+                &token,
+            ),
+            token_ix::initialize_multisig2(&token, &multisig, signers, m).map_err(|e| {
+                ExecError::Setup {
+                    step: "init-multisig-ix".into(),
+                    detail: e.to_string(),
+                }
+            })?,
+        ];
+        self.setup("create-multisig", &ixs)?;
+        Ok(multisig)
+    }
+
     /// Mint `amount` tokens to `destination` using the mint authority (the payer).
     pub fn mint_to(
         &self,
@@ -341,6 +371,34 @@ impl Harness {
         )
         .map_err(|e| ExecError::Setup {
             step: "transfer-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `TransferChecked` instruction signed by a multisig's individual signers.
+    #[allow(clippy::too_many_arguments)]
+    pub fn transfer_checked_multisig_ix(
+        &self,
+        source: &Pubkey,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        multisig: &Pubkey,
+        signers: &[&Pubkey],
+        amount: u64,
+        decimals: u8,
+    ) -> Result<Instruction, ExecError> {
+        token_ix::transfer_checked(
+            &spl_token_2022_interface::id(),
+            source,
+            mint,
+            destination,
+            multisig,
+            signers,
+            amount,
+            decimals,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "transfer-multisig-ix".into(),
             detail: e.to_string(),
         })
     }
@@ -479,6 +537,21 @@ impl Harness {
             frozen: state.base.state == AccountState::Frozen,
             delegate: Option::<Pubkey>::from(state.base.delegate),
             delegated_amount: state.base.delegated_amount,
+        })
+    }
+
+    /// Decode a multisig account from its real on-chain data.
+    pub fn multisig(
+        &self,
+        address: &Pubkey,
+    ) -> Result<spl_token_2022_interface::state::Multisig, ExecError> {
+        use solana_program_pack::Pack;
+        let acct = self.account(address)?;
+        spl_token_2022_interface::state::Multisig::unpack_from_slice(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
         })
     }
 
