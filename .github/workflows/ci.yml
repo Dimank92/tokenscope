@@ -84,3 +84,4 @@ jobs:
           cargo audit
           cargo audit -f programs/demo-escrow/Cargo.lock
           cargo audit -f programs/demo-hook/Cargo.lock
+          cargo audit -f programs/demo-forwarder/Cargo.lock
