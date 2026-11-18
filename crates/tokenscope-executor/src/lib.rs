@@ -6,11 +6,13 @@
 
 mod error;
 mod extensions;
+mod forwarder;
 mod harness;
 mod hook;
 
 pub use error::ExecError;
 pub use extensions::{MintExt, MintPlan};
+pub use forwarder::{demo_forwarder_program_id, forward_instruction};
 pub use harness::{
     ExecReport, Harness, TokenAccountView, derive_address, self_check, sha256_hex,
     token_2022_elf_sha256,

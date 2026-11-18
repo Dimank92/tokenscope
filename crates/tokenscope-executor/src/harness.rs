@@ -33,6 +33,8 @@ pub fn derive_address(label: &str) -> Pubkey {
 /// Decoded view of a Token-2022 token account (read from real account data).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TokenAccountView {
+    /// Owner of the token account.
+    pub owner: Pubkey,
     /// Spendable token balance.
     pub amount: u64,
     /// Fee amount withheld on this account by the transfer-fee extension, if present.
@@ -560,6 +562,7 @@ impl Harness {
             .ok()
             .map(|e| u64::from(e.withheld_amount));
         Ok(TokenAccountView {
+            owner: state.base.owner,
             amount: state.base.amount,
             withheld,
             frozen: state.base.state == AccountState::Frozen,

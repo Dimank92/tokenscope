@@ -2,6 +2,7 @@
 # Build the demo programs from source to target/sbf-programs/:
 #   demo_escrow_vulnerable.so, demo_escrow_corrected.so (programs/demo-escrow, two feature flavors)
 #   demo_hook.so (programs/demo-hook, a Token-2022 transfer-hook fixture)
+#   demo_forwarder.so (programs/demo-forwarder, a Token-2022 CPI forwarder fixture)
 # Requires: cargo-build-sbf (anza-xyz/cargo-build-sbf 4.5.0) and the Solana platform-tools v1.58
 # extracted at $TOKENSCOPE_PLATFORM_TOOLS (default: ~/.cache/solana/v1.58/platform-tools).
 set -eu
@@ -33,3 +34,13 @@ tmp=$(mktemp -d)
 cp "$tmp/demo_hook.so" "$OUT/demo_hook.so"
 rm -rf "$tmp"
 echo "built $OUT/demo_hook.so"
+
+# CPI forwarder fixture program (single flavor).
+tmp=$(mktemp -d)
+(cd "$ROOT/programs/demo-forwarder" && \
+  PATH="$PT/rust/bin:$PATH" RUSTC="$PT/rust/bin/rustc" \
+  cargo-build-sbf --no-rustup-override --skip-tools-install --tools-version v1.58 \
+    --sbf-out-dir "$tmp" >&2)
+cp "$tmp/demo_forwarder.so" "$OUT/demo_forwarder.so"
+rm -rf "$tmp"
+echo "built $OUT/demo_forwarder.so"
