@@ -9,7 +9,7 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 239 passing workspace
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 250 passing workspace
 > tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
 > `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
 > transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
