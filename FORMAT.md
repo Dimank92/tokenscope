@@ -56,7 +56,9 @@ for each run. Campaigns contain no timestamps, so identical inputs give identica
 `{schema_version, tokenscope_version, campaign_id, target, seed, totals, runs[], findings[]}`;
 `totals` = `{executed, passed, execution_failures, invariant_violations, setup_errors, findings}`;
 `runs[]` = `{scenario_id, name, outcome, setup_error, finding_ids[]}`. Findings are the full
-`Finding` documents above. `report.txt` is the human-readable rendering of the same data.
+`Finding` documents above. `report.txt` is the human-readable rendering of the same data;
+`report.md` is the Markdown audit report; `report.sarif` is the SARIF 2.1.0 report for CI and
+code-scanning integrations.
 
 ## Corpus case (`fixtures/corpus/<id>.json`, `schema_version` 1)
 
