@@ -37,10 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added `PointerView` struct and readers `mint_metadata_pointer`, `mint_group_pointer`, and `mint_group_member_pointer`.
   * Added instruction builders `update_metadata_pointer_ix`, `update_group_pointer_ix`, and `update_group_member_pointer_ix`.
   * Added 10 integration tests in `crates/tokenscope-executor/tests/ext_pointers.rs` verifying initialization, authority updates, clearing to `None`, rejection of unauthorized updates (`OwnerMismatch` 4), rejection of immutable pointer updates (`NoAuthorityExists` 29), and coexistence of all three pointers.
+* **Independent reference model and differential testing:**
+  * Added pure `TokenReferenceModel` in `tokenscope-model` modeling expected fee calculations, ceiling division, caps, pause, freeze, and atomic rollbacks.
+  * Added differential testing suite in `tokenscope-adapter/tests/reference_differential.rs` verifying full agreement with real Mollusk SVM execution and proving divergence on vulnerable escrow.
+* **Audit-grade reporting formats:**
+  * Added Markdown campaign audit reports (`--format markdown`) and SARIF 2.1.0 output (`--format sarif`) for code scanning and CI integrations.
 * **Patch delivery and clean-room verification:**
   * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
-  * Regenerated delivery patch series (54 patches in `../tokenscope-patches`).
-  * Automated clean-room verification verifying 54 applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
+  * Regenerated delivery patch series (58 patches in `../tokenscope-patches`).
+  * Automated clean-room verification verifying applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
 
 #### Round 2 — Hooks, State, Invariants, and Fuzzing
 * Added transfer-hook fixture program `programs/demo-hook` for atomic transfer validation and rejection.
