@@ -345,6 +345,112 @@ impl Harness {
         })
     }
 
+    /// Build a `TransferCheckedWithFee` instruction (does not execute it).
+    #[allow(clippy::too_many_arguments)]
+    pub fn transfer_checked_with_fee_ix(
+        &self,
+        source: &Pubkey,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+        decimals: u8,
+        fee: u64,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::transfer_checked_with_fee(
+            &spl_token_2022_interface::id(),
+            source,
+            mint,
+            destination,
+            authority,
+            &[],
+            amount,
+            decimals,
+            fee,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "transfer-checked-with-fee-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `HarvestWithheldTokensToMint` instruction.
+    pub fn harvest_withheld_to_mint_ix(
+        &self,
+        mint: &Pubkey,
+        sources: &[&Pubkey],
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::harvest_withheld_tokens_to_mint(&spl_token_2022_interface::id(), mint, sources)
+            .map_err(|e| ExecError::Setup {
+                step: "harvest-withheld-to-mint-ix".into(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Build a `WithdrawWithheldTokensFromMint` instruction signed by `authority`.
+    pub fn withdraw_withheld_from_mint_ix(
+        &self,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::withdraw_withheld_tokens_from_mint(
+            &spl_token_2022_interface::id(),
+            mint,
+            destination,
+            authority,
+            &[],
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "withdraw-withheld-from-mint-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `WithdrawWithheldTokensFromAccounts` instruction signed by `authority`.
+    pub fn withdraw_withheld_from_accounts_ix(
+        &self,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        sources: &[&Pubkey],
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::withdraw_withheld_tokens_from_accounts(
+            &spl_token_2022_interface::id(),
+            mint,
+            destination,
+            authority,
+            &[],
+            sources,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "withdraw-withheld-from-accounts-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `SetTransferFee` instruction signed by the fee config authority.
+    pub fn set_transfer_fee_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::set_transfer_fee(
+            &spl_token_2022_interface::id(),
+            mint,
+            authority,
+            &[],
+            transfer_fee_basis_points,
+            maximum_fee,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "set-transfer-fee-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
     fn account(&self, address: &Pubkey) -> Result<Account, ExecError> {
         self.ctx
             .account_store
@@ -395,6 +501,36 @@ impl Harness {
                 u64::from(f.maximum_fee),
             )
         }))
+    }
+
+    /// Read the withheld transfer fees accumulated on a mint (real mint account data).
+    pub fn mint_withheld(&self, mint: &Pubkey) -> Result<Option<u64>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<TransferFeeConfig>()
+            .ok()
+            .map(|c| u64::from(c.withheld_amount)))
+    }
+
+    /// Advance the harness clock to the first slot of the given epoch.
+    pub fn warp_to_epoch(&mut self, epoch: u64) {
+        let slot = self
+            .ctx
+            .mollusk
+            .sysvars
+            .epoch_schedule
+            .get_first_slot_in_epoch(epoch);
+        self.ctx.mollusk.warp_to_slot(slot);
+    }
+
+    /// Current epoch according to the harness clock sysvar.
+    pub fn epoch(&self) -> u64 {
+        self.ctx.mollusk.sysvars.clock.epoch
     }
 
     /// Extension types present on a mint, decoded from real account data.
