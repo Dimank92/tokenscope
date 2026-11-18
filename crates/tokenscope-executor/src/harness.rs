@@ -137,6 +137,34 @@ impl Harness {
         }
     }
 
+    /// Execute multiple instructions atomically as a single transaction and report errors, logs
+    /// and compute usage. State persists only when the entire transaction succeeds.
+    pub fn execute_transaction_logged(&self, instructions: &[Instruction]) -> ExecReport {
+        let start = self.logs.borrow().get_recorded_content().len();
+        let result = self
+            .ctx
+            .process_transaction_instructions(instructions, Some(&self.payer));
+        let logs = self.logs.borrow().get_recorded_content()[start..].to_vec();
+        let error = if result.program_result.is_ok() {
+            None
+        } else {
+            Some(format!("{:?}", result.program_result))
+        };
+        ExecReport {
+            error,
+            logs,
+            compute_units: result.compute_units_consumed,
+        }
+    }
+
+    /// Execute multiple instructions atomically as a single transaction, persisting state on success.
+    pub fn execute_transaction(&self, instructions: &[Instruction]) -> Result<(), ExecError> {
+        match self.execute_transaction_logged(instructions).error {
+            None => Ok(()),
+            Some(e) => Err(ExecError::Instruction(e)),
+        }
+    }
+
     /// Create an account at a caller-chosen address (for example a PDA, which the harness may
     /// create directly because Mollusk does not verify signatures).
     pub fn create_owned_account_at(
@@ -690,6 +718,73 @@ impl Harness {
                 cpi_guard::instruction::enable_cpi_guard(&token, account, owner, &[])
             } else {
                 cpi_guard::instruction::disable_cpi_guard(&token, account, owner, &[])
+            }
+            .map_err(map)?,
+        );
+        Ok(out)
+    }
+
+    /// Whether required transfer memos are enabled on a token account (`None` without extension),
+    /// decoded from real account data.
+    pub fn token_memo_transfer(&self, address: &Pubkey) -> Result<Option<bool>, ExecError> {
+        let acct = self.account(address)?;
+        let state = StateWithExtensions::<TokenAccount>::unpack(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
+        })?;
+        Ok(state
+            .get_extension::<spl_token_2022_interface::extension::memo_transfer::MemoTransfer>()
+            .ok()
+            .map(|m| bool::from(m.require_incoming_transfer_memos)))
+    }
+
+    /// The instructions that enable or disable required transfer memos on `account`. Enabling first
+    /// reallocates the account for the `MemoTransfer` extension when it is missing.
+    pub fn memo_transfer_instructions(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        enable: bool,
+    ) -> Result<Vec<Instruction>, ExecError> {
+        use spl_token_2022_interface::extension::memo_transfer;
+        let token = spl_token_2022_interface::id();
+        fn map(e: impl ToString) -> ExecError {
+            ExecError::Setup {
+                step: "memo-transfer-ix".into(),
+                detail: e.to_string(),
+            }
+        }
+        let mut out = Vec::new();
+        if enable && self.token_memo_transfer(account)?.is_none() {
+            out.push(
+                token_ix::reallocate(
+                    &token,
+                    account,
+                    &self.payer,
+                    owner,
+                    &[],
+                    &[ExtensionType::MemoTransfer],
+                )
+                .map_err(map)?,
+            );
+        }
+        out.push(
+            if enable {
+                memo_transfer::instruction::enable_required_transfer_memos(
+                    &token,
+                    account,
+                    owner,
+                    &[],
+                )
+            } else {
+                memo_transfer::instruction::disable_required_transfer_memos(
+                    &token,
+                    account,
+                    owner,
+                    &[],
+                )
             }
             .map_err(map)?,
         );
