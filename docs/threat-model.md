@@ -7,19 +7,25 @@ own results can be wrong, and (c) the security posture of the tool.
 
 Integrations that assume Token-2022 behaves like SPL Token. Implemented, demonstrated and tested:
 
-* **Nominal-vs-received accounting** under `TransferFeeConfig` (INV-ACCT-001, INV-SOLV-001, INV-CONS-001).
+* **Nominal-vs-received accounting** under `TransferFeeConfig` (INV-ACCT-001, INV-SOLV-001, INV-CONS-001),
+  including epoch-advancement fee changes, `TransferCheckedWithFee`, harvest and withdrawal operations.
 * **Custody assumptions** broken by mint extensions: a `PermanentDelegate` can drain the vault (INV-CUST-001).
 * **Execution-time rejections** an integration must survive atomically: frozen accounts and
-  `DefaultAccountState`, `Pausable`, **CPI Guard** blocking owner-signed CPI transfers, and
-  **transfer hooks** the integration does not support (extra accounts are mandatory).
+  `DefaultAccountState`, `Pausable`, **CPI Guard** (tested via real CPI forwarder blocking owner-signed
+  CPI transfers, burns, approves, close-account, and set-authority while allowing delegate CPI transfers),
+  and **transfer hooks** the integration does not support (extra accounts are mandatory).
 * **Authorization and identity**: non-depositor withdrawals, substituted mint/vault/token program/authority,
-  re-initialization (INV-AUTH-001).
+  re-initialization (INV-AUTH-001), and multisig authority threshold verification (including runtime acceptance of $m > n$).
+* **Transaction atomicity and memo requirements**: required transfer memos with empty memo validation,
+  strict instruction ordering, and complete atomic rollback on transaction failure.
+* **Pointer extensions**: `MetadataPointer`, `GroupPointer`, `GroupMemberPointer` lifecycle, authorized
+  updates, and immutable pointer enforcement (`NoAuthorityExists`).
 * **Extension configuration**: valid and invalid combinations, initialization order, required account
   extensions (observed against the runtime, including one place it differs from the docs).
 
 Failure atomicity is checked (INV-ATOM-001) but holds structurally on the current target. Not tested:
-confidential transfers, memo-required transfers, interest/scaled amounts beyond creation, metadata and
-pointer extensions, multisig authorities.
+confidential transfers and their fees, full TokenMetadata/TokenGroup account structures (pointers are tested),
+and interest accrual / scaled UI amounts beyond creation.
 
 ## Assumptions
 

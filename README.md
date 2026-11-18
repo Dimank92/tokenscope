@@ -9,10 +9,13 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** early (version 0.1.0). One target (a demo escrow) and six invariants. Token-2022
-> behavior verified by executable tests: transfer fees, freeze/thaw, DefaultAccountState, Pausable,
-> transfer hooks (fixture hook), CPI Guard, delegates, the permanent delegate and extension
-> compatibility. See [Limitations](#limitations) and
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 239 passing workspace
+> tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
+> `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
+> transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
+> delegate, multisig authorities (threshold signing and on-chain quirks), required transfer memos
+> with atomic rollback, pointer extensions (MetadataPointer, GroupPointer, GroupMemberPointer), and
+> extension compatibility. See [Limitations](#limitations) and
 > [docs/supported-extensions.md](docs/supported-extensions.md) before relying on any result.
 > TokenScope does not detect vulnerabilities in general, and an invariant violation is **not**
 > proof of exploitability. It is also not the first tool in this space; see
@@ -91,9 +94,10 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 ## Limitations
 
 * One target program (the demo escrow). Token-2022 coverage is listed with its limits in
-  [docs/supported-extensions.md](docs/supported-extensions.md); confidential transfers, memo-required
-  transfers, metadata/pointer extensions and multisig are **not covered**. The transfer-hook tests use a
-  fixture hook program, not a production one.
+  [docs/supported-extensions.md](docs/supported-extensions.md); confidential transfers and production
+  TokenMetadata account data are **not covered**. Pointer extensions, multisig authorities, required
+  transfer memos, and CPI Guard restrictions are verified by dedicated executable test suites. The
+  transfer-hook tests use a fixture hook program, not a production one.
 * Authorization is modeled as the depositor-signature, account-identity and initialization checks
   (`INV-AUTH-001`); other authority paths are not exercised.
 * Scenario generation is seeded pseudo-random or *input-space*-guided; it never observes program coverage.
@@ -113,7 +117,7 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 
 | Script | Purpose |
 |---|---|
-| `scripts/build-programs.sh` | build escrow (two flavors) and demo hook from source |
+| `scripts/build-programs.sh` | build escrow (two flavors), demo hook and CPI forwarder from source |
 | `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (44 checks) |
 | `scripts/check-tui-terminal.py` | verify terminal restoration on quit, error, panic, SIGTERM, SIGHUP (pty) |
 | `scripts/fuzz.sh <target> [s]` | libFuzzer run on the stable compiler ([fuzz/README.md](fuzz/README.md)) |
