@@ -42,9 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added differential testing suite in `tokenscope-adapter/tests/reference_differential.rs` verifying full agreement with real Mollusk SVM execution and proving divergence on vulnerable escrow.
 * **Audit-grade reporting formats:**
   * Added Markdown campaign audit reports (`--format markdown`) and SARIF 2.1.0 output (`--format sarif`) for code scanning and CI integrations.
+* **Target adapter architecture:**
+  * Added stable `TargetAdapter` trait in `tokenscope-adapter` decoupling program deployment and trace capture from the engine.
+  * Implemented `TargetAdapter` for `EscrowAdapter` and re-exported via `tokenscope-core`.
 * **Patch delivery and clean-room verification:**
   * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
-  * Regenerated delivery patch series (58 patches in `../tokenscope-patches`).
+  * Regenerated delivery patch series (60 patches in `../tokenscope-patches`).
   * Automated clean-room verification verifying applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
 
 #### Round 2 — Hooks, State, Invariants, and Fuzzing
