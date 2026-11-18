@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+pub use tokenscope_adapter::TargetAdapter;
 use tokenscope_adapter::{EscrowAdapter, EscrowFlavor};
 use tokenscope_invariants::{classify, evaluate, findings};
 use tokenscope_model::{Campaign, Finding, OutcomeClass, RunRecord, Scenario};
