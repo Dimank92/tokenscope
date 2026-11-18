@@ -63,6 +63,8 @@ expect 0 "minimize a finding" -- minimize "$W/o2/$V/findings/$F" --out "$W/min.j
 expect 2 "minimize malformed finding" -- minimize "$W/bad.json"
 expect 0 "report json" -- report "$V" --format json --out "$W/o2";   contains "$W/out" '"totals"' "report json"
 expect 0 "report text" -- report "$V" --format text --out "$W/o2";   contains "$W/out" "invariant violations" "report text"
+expect 0 "report markdown" -- report "$V" --format markdown --out "$W/o2"; contains "$W/out" "# TokenScope Campaign Report" "report markdown"
+expect 0 "report sarif" -- report "$V" --format sarif --out "$W/o2"; contains "$W/out" '"$schema"' "report sarif"
 expect 2 "report unknown id" -- report cp_0000000000000000 --out "$W/o2"
 expect 2 "report invalid id" -- report "../etc/passwd" --out "$W/o2"
 

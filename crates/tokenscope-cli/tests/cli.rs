@@ -325,6 +325,25 @@ fn report_prints_stored_campaigns_in_both_formats() {
         t.stdout,
         fs::read_to_string(cdir.join("report.txt")).unwrap()
     );
+    let m = tokenscope(&[
+        "report",
+        &id,
+        "--format",
+        "markdown",
+        "--out",
+        s(dir.path()),
+    ]);
+    assert_eq!(m.code, 0);
+    assert_eq!(
+        m.stdout,
+        fs::read_to_string(cdir.join("report.md")).unwrap()
+    );
+    let sr = tokenscope(&["report", &id, "--format", "sarif", "--out", s(dir.path())]);
+    assert_eq!(sr.code, 0);
+    assert_eq!(
+        sr.stdout,
+        fs::read_to_string(cdir.join("report.sarif")).unwrap()
+    );
     assert_eq!(
         tokenscope(&["report", "cp_0000000000000000", "--out", s(dir.path())]).code,
         2

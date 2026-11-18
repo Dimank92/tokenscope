@@ -42,6 +42,10 @@ pub enum Format {
     Json,
     /// Human-readable text.
     Text,
+    /// Markdown security audit report.
+    Markdown,
+    /// SARIF 2.1.0 report for code scanning and CI integrations.
+    Sarif,
 }
 
 /// Subcommands.

@@ -18,7 +18,7 @@ use tokenscope_invariants::catalog;
 use tokenscope_model::{
     Campaign, CorpusCase, Expectation, Finding, ModelError, OutcomeClass, Scenario,
 };
-use tokenscope_report::{render_json, render_text, write_artifacts};
+use tokenscope_report::{render_json, render_markdown, render_sarif, render_text, write_artifacts};
 use tokenscope_scenarios::{
     SuiteSelection, builtin_suite, extension_suite, generate, generate_extended, generate_guided,
 };
@@ -564,6 +564,8 @@ fn report(id: &str, format: Format, dir: PathBuf, out: &mut dyn Write) -> Result
     match format {
         Format::Json => write!(out, "{}", render_json(&campaign))?,
         Format::Text => write!(out, "{}", render_text(&campaign))?,
+        Format::Markdown => write!(out, "{}", render_markdown(&campaign))?,
+        Format::Sarif => write!(out, "{}", render_sarif(&campaign))?,
     }
     Ok(EXIT_OK)
 }

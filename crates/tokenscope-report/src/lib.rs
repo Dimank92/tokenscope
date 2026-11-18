@@ -167,6 +167,179 @@ pub fn render_text(c: &Campaign) -> String {
     s
 }
 
+/// Render the Markdown campaign report.
+pub fn render_markdown(c: &Campaign) -> String {
+    let t = c.totals();
+    let mut s = format!(
+        "# TokenScope Campaign Report\n\n\
+        | Metric | Value |\n\
+        |---|---|\n\
+        | **Campaign ID** | `{}` |\n\
+        | **Target** | `{}` |\n\
+        | **Deterministic Seed** | `{}` |\n\
+        | **Tool Version** | `tokenscope {}` |\n\
+        | **Total Executed** | {} |\n\
+        | **Passed** | {} |\n\
+        | **Execution Failures** | {} |\n\
+        | **Invariant Violations** | {} |\n\
+        | **Setup Errors** | {} |\n\
+        | **Findings** | {} |\n\n\
+        ## Runs\n\n\
+        | Scenario ID | Name | Outcome | Detail |\n\
+        |---|---|---|---|\n",
+        c.id,
+        c.target,
+        c.seed,
+        TOOL_VERSION,
+        t.executed,
+        t.passed,
+        t.execution_failures,
+        t.invariant_violations,
+        t.setup_errors,
+        t.findings
+    );
+
+    for r in &c.runs {
+        let detail = r.setup_error.as_deref().unwrap_or("-");
+        s.push_str(&format!(
+            "| `{}` | {} | `{}` | {} |\n",
+            r.scenario_id,
+            r.scenario.name.replace('|', "\\|"),
+            outcome_label(r.outcome),
+            detail.replace('|', "\\|")
+        ));
+    }
+
+    if t.findings > 0 {
+        s.push_str("\n## Invariant Violations and Findings\n\n");
+        for f in c.findings() {
+            s.push_str(&format!(
+                "### `{}`: {} [{:?}]\n\n\
+                * **Target:** `{}`\n\
+                * **Scenario:** `{}` (seed: `{}`)\n\
+                * **Expected:** {}\n\
+                * **Observed:** {}\n\
+                * **Severity Rationale:** {}\n\n",
+                f.id,
+                f.invariant_id,
+                f.severity,
+                f.target,
+                f.scenario_id,
+                f.seed,
+                f.expected,
+                f.observed,
+                f.severity_rationale
+            ));
+
+            if !f.deltas.is_empty() {
+                s.push_str("#### State Deltas\n\n| Account | Metric | Before | After | Delta |\n|---|---|---|---|---|\n");
+                for d in &f.deltas {
+                    let diff = (d.after as i128) - (d.before as i128);
+                    s.push_str(&format!(
+                        "| `{}` | `{}` | {} | {} | {} |\n",
+                        d.account, d.label, d.before, d.after, diff
+                    ));
+                }
+                s.push('\n');
+            }
+
+            s.push_str(&format!(
+                "#### Reproduction\n\n```sh\n{}\n```\n\n",
+                f.reproduction.command
+            ));
+
+            if let Some(m) = &f.minimized {
+                s.push_str(&format!(
+                    "**Minimized Scenario:** `{}` ({} actions)\n\n",
+                    m.id(),
+                    m.actions.len()
+                ));
+            }
+        }
+    }
+
+    s.push_str("\n---\n*Note: An invariant violation indicates an on-chain divergence under execution, but is not automatic proof of exploitability.*\n");
+    s
+}
+
+/// Render the SARIF 2.1.0 report for code-scanning and CI integration.
+pub fn render_sarif(c: &Campaign) -> String {
+    use std::collections::BTreeMap;
+
+    let mut rules_map = BTreeMap::new();
+    for f in c.findings() {
+        rules_map.entry(&f.invariant_id).or_insert_with(|| {
+            serde_json::json!({
+                "id": f.invariant_id,
+                "name": f.invariant_id,
+                "shortDescription": {
+                    "text": format!("Token-2022 invariant violation: {}", f.invariant_id)
+                },
+                "defaultConfiguration": {
+                    "level": match f.severity {
+                        tokenscope_model::Severity::High => "error",
+                        tokenscope_model::Severity::Medium => "warning",
+                        tokenscope_model::Severity::Low | tokenscope_model::Severity::Info => "note",
+                    }
+                }
+            })
+        });
+    }
+    let rules: Vec<_> = rules_map.into_values().collect();
+
+    let results: Vec<_> = c.findings().map(|f| {
+        let level = match f.severity {
+            tokenscope_model::Severity::High => "error",
+            tokenscope_model::Severity::Medium => "warning",
+            tokenscope_model::Severity::Low | tokenscope_model::Severity::Info => "note",
+        };
+        serde_json::json!({
+            "ruleId": f.invariant_id,
+            "level": level,
+            "message": {
+                "text": format!("Invariant {}: expected {}, observed {}", f.invariant_id, f.expected, f.observed)
+            },
+            "locations": [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": format!("scenarios/{}.json", f.scenario_id)
+                        }
+                    }
+                }
+            ],
+            "properties": {
+                "findingId": f.id,
+                "target": f.target,
+                "scenarioId": f.scenario_id,
+                "seed": f.seed,
+                "severityRationale": f.severity_rationale,
+                "reproductionCommand": f.reproduction.command
+            }
+        })
+    }).collect();
+
+    let sarif = serde_json::json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "TokenScope",
+                        "version": TOOL_VERSION,
+                        "informationUri": "https://github.com/integral-830/tokenscope",
+                        "rules": rules
+                    }
+                },
+                "results": results
+            }
+        ]
+    });
+
+    serde_json::to_string_pretty(&sarif).expect("sarif serialization is infallible") + "\n"
+}
+
 fn write(path: &Path, content: &str) -> Result<(), ReportError> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir).map_err(|source| ReportError::Io {
@@ -191,21 +364,29 @@ pub struct Artifacts {
     pub report_json: PathBuf,
     /// Text report.
     pub report_text: PathBuf,
+    /// Markdown report.
+    pub report_markdown: PathBuf,
+    /// SARIF 2.1.0 report.
+    pub report_sarif: PathBuf,
     /// One file per finding (`findings/<id>.json`), usable with `tokenscope minimize`.
     pub findings: Vec<PathBuf>,
     /// One file per distinct finding scenario (`scenarios/<id>.json`), usable with `replay`.
     pub scenarios: Vec<PathBuf>,
 }
 
-/// Write `<dir>/<campaign-id>/{campaign.json,report.json,report.txt,findings/*,scenarios/*}`.
+/// Write `<dir>/<campaign-id>/{campaign.json,report.json,report.txt,report.md,report.sarif,findings/*,scenarios/*}`.
 pub fn write_artifacts(c: &Campaign, out_dir: &Path) -> Result<Artifacts, ReportError> {
     let dir = out_dir.join(&c.id);
     let campaign = dir.join("campaign.json");
     let report_json = dir.join("report.json");
     let report_text = dir.join("report.txt");
+    let report_markdown = dir.join("report.md");
+    let report_sarif = dir.join("report.sarif");
     write(&campaign, &(c.to_json() + "\n"))?;
     write(&report_json, &render_json(c))?;
     write(&report_text, &render_text(c))?;
+    write(&report_markdown, &render_markdown(c))?;
+    write(&report_sarif, &render_sarif(c))?;
     let mut findings = Vec::new();
     let mut scenarios = Vec::new();
     for f in c.findings() {
@@ -225,6 +406,8 @@ pub fn write_artifacts(c: &Campaign, out_dir: &Path) -> Result<Artifacts, Report
         campaign,
         report_json,
         report_text,
+        report_markdown,
+        report_sarif,
         findings,
         scenarios,
     })
