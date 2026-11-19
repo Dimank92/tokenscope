@@ -147,12 +147,6 @@ TokenScope models the Solana execution environment with explicit boundaries:
 | `scripts/check-tui-terminal.py` | verify terminal restoration on quit, error, panic, SIGTERM, SIGHUP (pty) |
 | `scripts/fuzz.sh <target> [s]` | libFuzzer run on the stable compiler ([fuzz/README.md](fuzz/README.md)) |
 | `cargo run --release -p tokenscope-core --example bench` | benchmarks ([docs/benchmarks.md](docs/benchmarks.md)) |
-| `scripts/export-patches.sh`, `scripts/verify-reconstruction.sh` | ordered patch series and clean-room check |
-
-## Reproducibility and patch delivery
-
-The repository history is also delivered as an ordered `git format-patch` series outside the source
-tree; see [CONTRIBUTING.md](CONTRIBUTING.md#patch-delivery) and `scripts/verify-reconstruction.sh`.
 
 ## License
 
