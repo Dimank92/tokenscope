@@ -26,9 +26,11 @@ export const Scene3Corrected: React.FC = () => {
         zoom={{
           startFrame: 80,
           endFrame: 820,
-          targetScale: 1.4,
-          targetX: -100,
-          targetY: -60,
+          targetScale: 1.24,
+          targetX: 30,
+          targetY: -20,
+          originX: '22%',
+          originY: '42%',
         }}
       >
         <TerminalWindow

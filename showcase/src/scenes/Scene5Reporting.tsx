@@ -26,9 +26,11 @@ export const Scene5Reporting: React.FC = () => {
         zoom={{
           startFrame: 70,
           endFrame: 820,
-          targetScale: 1.45,
-          targetX: -110,
-          targetY: -70,
+          targetScale: 1.25,
+          targetX: 30,
+          targetY: -20,
+          originX: '22%',
+          originY: '42%',
         }}
       >
         <TerminalWindow

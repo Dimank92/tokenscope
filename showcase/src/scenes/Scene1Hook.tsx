@@ -20,9 +20,11 @@ export const Scene1Hook: React.FC = () => {
         zoom={{
           startFrame: 120,
           endFrame: 650,
-          targetScale: 1.35,
-          targetX: -120,
-          targetY: -40,
+          targetScale: 1.24,
+          targetX: 30,
+          targetY: -20,
+          originX: '22%',
+          originY: '42%',
         }}
       >
         <TerminalWindow

@@ -24,9 +24,11 @@ export const Scene4Shrinker: React.FC = () => {
         zoom={{
           startFrame: 90,
           endFrame: 950,
-          targetScale: 1.5,
-          targetX: -120,
-          targetY: -80,
+          targetScale: 1.25,
+          targetX: 30,
+          targetY: -30,
+          originX: '22%',
+          originY: '42%',
         }}
       >
         <TerminalWindow

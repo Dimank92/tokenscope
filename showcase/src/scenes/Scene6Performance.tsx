@@ -22,9 +22,11 @@ export const Scene6Performance: React.FC = () => {
         zoom={{
           startFrame: 60,
           endFrame: 500,
-          targetScale: 1.3,
-          targetX: -90,
-          targetY: -40,
+          targetScale: 1.22,
+          targetX: 20,
+          targetY: -20,
+          originX: '22%',
+          originY: '38%',
         }}
       >
         <TerminalWindow

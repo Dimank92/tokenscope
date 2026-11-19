@@ -26,9 +26,11 @@ export const Scene2Vulnerable: React.FC = () => {
         zoom={{
           startFrame: 90,
           endFrame: 1100,
-          targetScale: 1.55,
-          targetX: -140,
-          targetY: -110,
+          targetScale: 1.25,
+          targetX: 40,
+          targetY: -40,
+          originX: '22%',
+          originY: '45%',
         }}
       >
         <TerminalWindow

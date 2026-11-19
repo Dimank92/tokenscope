@@ -5,8 +5,10 @@ export interface ZoomConfig {
   startFrame: number;
   endFrame: number;
   targetScale: number;
-  targetX: number;
-  targetY: number;
+  targetX?: number;
+  targetY?: number;
+  originX?: string;
+  originY?: string;
 }
 
 interface CameraRigProps {
@@ -20,9 +22,18 @@ export const CameraRig: React.FC<CameraRigProps> = ({ children, zoom }) => {
   let scale = 1;
   let translateX = 0;
   let translateY = 0;
+  const originX = zoom?.originX ?? '24%';
+  const originY = zoom?.originY ?? '42%';
 
   if (zoom) {
-    const { startFrame, endFrame, targetScale, targetX, targetY } = zoom;
+    const {
+      startFrame,
+      endFrame,
+      targetScale,
+      targetX = 0,
+      targetY = 0,
+    } = zoom;
+
     const progress = interpolate(frame, [startFrame, startFrame + 30], [0, 1], {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp',
@@ -54,14 +65,14 @@ export const CameraRig: React.FC<CameraRigProps> = ({ children, zoom }) => {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#070b14',
-        backgroundImage: 'radial-gradient(circle at 50% 30%, #111a2e 0%, #060910 80%)',
+        backgroundImage: 'radial-gradient(circle at 40% 35%, #111a2e 0%, #060910 80%)',
         overflow: 'hidden',
       }}
     >
       <div
         style={{
           transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
-          transformOrigin: 'center center',
+          transformOrigin: `${originX} ${originY}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
