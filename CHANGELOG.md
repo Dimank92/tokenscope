@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Round 3 — Extension Operations and Runtime Semantics
+#### Round 3: Extension Operations and Runtime Semantics
 * **Transfer fee operations and epoch mechanics:**
   * Added `transfer_checked_with_fee_ix` instruction builder for exact fee verification (`FeeMismatch` 32).
   * Added instruction builders for `harvest_withheld_to_mint_ix`, `withdraw_withheld_from_mint_ix`, `withdraw_withheld_from_accounts_ix`, and `set_transfer_fee_ix`.
@@ -58,17 +58,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added seed corpus and stable compiler mutation tests in `tokenscope-fuzz-harness/tests/targets.rs`.
 * **Patch delivery and clean-room verification:**
   * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
-  * Regenerated delivery patch series (69 patches in `../tokenscope-patches`).
+  * Regenerated delivery patch series (70 patches in `../tokenscope-patches`).
   * Automated clean-room verification verifying applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
 
-#### Round 2 — Hooks, State, Invariants, and Fuzzing
+#### Round 2: Hooks, State, Invariants, and Fuzzing
 * Added transfer-hook fixture program `programs/demo-hook` for atomic transfer validation and rejection.
 * Added support and verification for `DefaultAccountState`, `Pausable`, `PermanentDelegate`, and extension compatibility constraints.
 * Added dimension-guided scenario generation and boundary exploration in `tokenscope-scenarios`.
 * Added 6 libFuzzer targets in `crates/tokenscope-fuzz-harness` and `fuzz/`.
 * Added reproducible benchmark suite across scenario generation, SVM lifecycle, invariant checks, and shrinking in `docs/benchmarks.md`.
 
-#### Round 1 — Core Architecture and Demo
+#### Round 1: Core Architecture and Demo
 * Scaffolded 10 workspace crates with `tokenscope-model`, `tokenscope-executor`, `tokenscope-adapter`, `tokenscope-invariants`, `tokenscope-shrinker`, `tokenscope-report`, `tokenscope-cli`, and `tokenscope-tui`.
 * Implemented native SBF escrow demo (`programs/demo-escrow`) with vulnerable and corrected flavors.
 * Implemented 6 core invariants (`INV-ACCT-001`, `INV-SOLV-001`, `INV-ATOM-001`, `INV-CONS-001`, `INV-AUTH-001`, `INV-CUST-001`).
