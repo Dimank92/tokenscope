@@ -3,3 +3,8 @@
 *.log
 .DS_Store
 /fuzz/artifacts
+node_modules
+/showcase/node_modules
+/showcase/out
+/tokenscope-out
+/audit-results

@@ -1,0 +1,59 @@
+name: TokenScope Security Audit
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit:
+    name: TokenScope SVM Invariant Audit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust 1.99.0
+        run: rustup toolchain install 1.99.0 --profile minimal && rustup default 1.99.0
+
+      - name: Install build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Install cargo-build-sbf 4.5.0
+        run: command -v cargo-build-sbf || cargo install cargo-build-sbf --version 4.5.0 --locked
+
+      - name: Install Solana platform-tools v1.58
+        run: |
+          set -eu
+          if [ ! -x "$HOME/.cache/solana/v1.58/platform-tools/rust/bin/rustc" ]; then
+            curl -fsSL -o /tmp/pt.tar.bz2 https://github.com/anza-xyz/platform-tools/releases/download/v1.58/platform-tools-linux-x86_64.tar.bz2
+            mkdir -p "$HOME/.cache/solana/v1.58/platform-tools"
+            tar xjf /tmp/pt.tar.bz2 -C "$HOME/.cache/solana/v1.58/platform-tools"
+          fi
+
+      - name: Build Demo Programs
+        run: ./scripts/build-programs.sh
+
+      - name: Build TokenScope CLI
+        run: cargo build --release -p tokenscope-cli
+
+      - name: Run TokenScope Audit Campaign
+        run: |
+          mkdir -p audit-results
+          ./target/release/tokenscope run --target demo-escrow-corrected --count 50 --strategy stateful --out audit-results || true
+          CAMPAIGN_ID=$(ls -td audit-results/cp_* | head -n 1 | xargs -n 1 basename)
+          ./target/release/tokenscope report "$CAMPAIGN_ID" --format sarif --out audit-results > audit-results/tokenscope.sarif
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: audit-results/tokenscope.sarif
+          category: tokenscope-svm-invariants

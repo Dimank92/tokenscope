@@ -72,7 +72,7 @@ cargo test --workspace               # all tests (needs the built programs)
 | `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided\|stateful] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
 | `replay <scenario-file>` | re-run one scenario | 0 / 1 / 2 / 3 |
 | `minimize <finding-file> [--out F] [--max-attempts N]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
-| `report <campaign-id> --format json\|text` | print a stored report | 0, 2 |
+| `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
 | `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
 
@@ -90,6 +90,31 @@ guided by program coverage), and `stateful` (model-based state-machine generatio
 `crates/tokenscope-{model,executor,adapter,invariants,scenarios,shrinker,core,report,cli,tui}`,
 `programs/demo-escrow`, `fixtures/` (scenarios and the regression corpus), `scripts/`, `docs/`.
 Architecture: [docs/architecture.md](docs/architecture.md).
+
+## Execution boundaries and security model
+
+TokenScope models the Solana execution environment with explicit boundaries:
+
+1. **In-process Mollusk SVM vs live validator:**
+   * TokenScope executes un-mocked SBF BPF program bytecodes directly in-memory via the Mollusk SVM harness (`43.2 us` per instruction).
+   * This design prioritizes invariant fuzzing throughput (over 23,000 instructions per second on a single CPU core) rather than full network simulation (Gossip, Tower BFT, RPC latency, or priority fee auctions).
+   * Transaction-level atomicity and multi-instruction rollback are exercised via `execute_transaction_logged`, while cryptographic Ed25519 signature verification is abstracted to `is_signer` checks.
+
+2. **Supported Token-2022 extensions:**
+   * `TransferFeeConfig` and `TransferFeeAmount`: Ceiling division math, withheld fee tracking on recipient accounts and mint, 2-epoch delay (`warp_to_epoch`), and permissionless harvest.
+   * `CpiGuard`: Strict caller validation rejecting owner-signed `Transfer`, `Burn`, `CloseAccount`, and `SetAuthority` at `stack_height > 1`, while permitting `DelegateTransfer`.
+   * `MemoTransfer`: SPL memo requirement enforcement and full multi-instruction atomic rollback.
+   * `Multisig`: On-chain threshold enforcement ($M \le N$) and runtime quirk verification ($M > N$ permanently locking funds).
+   * `Pointers`: `MetadataPointer`, `GroupPointer`, and `GroupMemberPointer` authority update lifecycle and immutability lock (`authority = None`).
+   * `DefaultAccountState`, `Pausable`, and `PermanentDelegate`.
+
+3. **Roadmap v2 boundaries (deliberately scoped out):**
+   * *Confidential Transfers (ZK ElGamal):* Requires twisted ElGamal proof generation and the `ZkTokenProof` system program, which would slow down in-memory SVM fuzzing by orders of magnitude.
+   * *Dynamic `ExtraAccountMetaList` Resolution:* Transfer hooks currently execute against explicit validation fixtures rather than resolving dynamic third-party account lists via `spl-tlv-account-resolution`.
+   * *TokenMetadata TLV Payloads:* Pointers to metadata accounts are verified, but internal Metaplex Borsh/TLV schemas are not parsed.
+
+4. **CI/CD Security Automation:**
+   * TokenScope natively emits OASIS SARIF 2.1.0 reports (`--format sarif`), integrating directly into GitHub Code Scanning and Pull Request security gates via `.github/workflows/tokenscope-audit.yml`.
 
 ## Limitations
 
@@ -118,7 +143,7 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 | Script | Purpose |
 |---|---|
 | `scripts/build-programs.sh` | build escrow (two flavors), demo hook and CPI forwarder from source |
-| `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (44 checks) |
+| `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (49 checks) |
 | `scripts/check-tui-terminal.py` | verify terminal restoration on quit, error, panic, SIGTERM, SIGHUP (pty) |
 | `scripts/fuzz.sh <target> [s]` | libFuzzer run on the stable compiler ([fuzz/README.md](fuzz/README.md)) |
 | `cargo run --release -p tokenscope-core --example bench` | benchmarks ([docs/benchmarks.md](docs/benchmarks.md)) |
