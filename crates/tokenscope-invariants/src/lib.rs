@@ -27,6 +27,21 @@ pub struct InvariantDef {
     pub expected: &'static str,
     /// Cases deliberately not treated as violations.
     pub exceptions: &'static [&'static str],
+    /// Invariant level in the hierarchy.
+    pub level: InvariantLevel,
+}
+
+/// Classification of invariants by their scope in the verification hierarchy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvariantLevel {
+    /// Global Solana VM invariants (lamport conservation, signer privileges, read-only).
+    GlobalSvm,
+    /// Token-2022 program invariants (transfer fees, freeze, CPI guard).
+    Token2022,
+    /// Target-program-specific invariants (escrow accounting, solvency).
+    TargetSpecific,
+    /// Developer-defined custom invariants.
+    Custom,
 }
 
 /// Transfer accounting: credit equals actual receipt.
@@ -43,6 +58,7 @@ pub const ACCT_001: InvariantDef = InvariantDef {
     exceptions: &[
         "none in P0: the demo escrow has no fee of its own and no other path credits the vault",
     ],
+    level: InvariantLevel::TargetSpecific,
 };
 
 /// Solvency: liabilities never exceed assets.
@@ -53,6 +69,7 @@ pub const SOLV_001: InvariantDef = InvariantDef {
     preconditions: &["the step succeeded"],
     expected: "escrow_recorded <= vault_amount",
     exceptions: &["transient states inside a single instruction are not observed"],
+    level: InvariantLevel::TargetSpecific,
 };
 
 /// Failure atomicity.
@@ -63,6 +80,7 @@ pub const ATOM_001: InvariantDef = InvariantDef {
     preconditions: &["the step failed"],
     expected: "after == before for all observed quantities",
     exceptions: &["lamport fees and compute use are not observed"],
+    level: InvariantLevel::GlobalSvm,
 };
 
 /// Conservation under documented transfer-fee semantics.
@@ -73,6 +91,7 @@ pub const CONS_001: InvariantDef = InvariantDef {
     preconditions: &["the step is a deposit", "the step succeeded"],
     expected: "depositor_debit == amount && delta(vault_amount) + delta(vault_withheld) == amount",
     exceptions: &["a missing transfer-fee extension counts as withheld = 0"],
+    level: InvariantLevel::Token2022,
 };
 
 /// Authorization: unauthorized actors cause no prohibited transition.
@@ -87,6 +106,7 @@ pub const AUTH_001: InvariantDef = InvariantDef {
     exceptions: &[
         "only the depositor-signature, account-identity and initialization checks are modeled; other authority paths (delegates, forged PDAs) are not exercised",
     ],
+    level: InvariantLevel::TargetSpecific,
 };
 
 /// Custody: only the depositor's withdrawal may reduce the vault.
@@ -100,6 +120,7 @@ pub const CUST_001: InvariantDef = InvariantDef {
         "Withdraw by the depositor is the authorized path and is excluded",
         "interest-bearing or scaled amounts are not modeled; only raw token amounts are compared",
     ],
+    level: InvariantLevel::Token2022,
 };
 
 /// All invariants implemented by this crate.

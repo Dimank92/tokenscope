@@ -211,6 +211,8 @@ impl tokenscope_core::TargetAdapter for MockVaultAdapter {
             status: tokenscope_model::StepStatus::Ok,
             logs: vec!["Program log: Vault credited deposit".into()],
             compute_units: 450,
+            raw_before: None,
+            raw_after: None,
         };
         Ok(tokenscope_model::ExecutionTrace {
             schema_version: 1,
@@ -219,6 +221,7 @@ impl tokenscope_core::TargetAdapter for MockVaultAdapter {
             initial: snap_before,
             steps: vec![step],
             accounts: vec![],
+            raw_initial: None,
         })
     }
 }

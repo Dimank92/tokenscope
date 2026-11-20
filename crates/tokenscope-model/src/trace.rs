@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Action, SCHEMA_VERSION};
+use crate::{Action, RawSnapshot, SCHEMA_VERSION};
 
 /// Real account quantities observed after setup and after each step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -71,6 +71,12 @@ pub struct StepRecord {
     pub logs: Vec<String>,
     /// Compute units consumed.
     pub compute_units: u64,
+    /// Raw account state before the action (generic layer, omitted when not captured).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_before: Option<RawSnapshot>,
+    /// Raw account state after the action (generic layer, omitted when not captured).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_after: Option<RawSnapshot>,
 }
 
 /// A named address involved in the run, for evidence.
@@ -97,6 +103,9 @@ pub struct ExecutionTrace {
     pub accounts: Vec<AccountRef>,
     /// Executed steps in order.
     pub steps: Vec<StepRecord>,
+    /// Raw account state after setup (generic layer, omitted when not captured).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_initial: Option<RawSnapshot>,
 }
 
 impl ExecutionTrace {
@@ -114,6 +123,7 @@ impl ExecutionTrace {
             initial,
             accounts,
             steps: Vec::new(),
+            raw_initial: None,
         }
     }
 
@@ -185,6 +195,8 @@ mod tests {
             status: StepStatus::Failed { error: "x".into() },
             logs: vec!["l".into()],
             compute_units: 9,
+            raw_before: None,
+            raw_after: None,
         });
         let json = serde_json::to_string(&t).unwrap();
         assert_eq!(serde_json::from_str::<ExecutionTrace>(&json).unwrap(), t);
