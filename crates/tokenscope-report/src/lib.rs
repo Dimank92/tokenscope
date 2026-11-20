@@ -132,8 +132,20 @@ pub fn render_finding_text(f: &Finding) -> String {
 /// Render the human-readable campaign report.
 pub fn render_text(c: &Campaign) -> String {
     let t = c.totals();
+    let total_cu: u64 = c
+        .runs
+        .iter()
+        .filter_map(|r| r.trace.as_ref())
+        .flat_map(|tr| &tr.steps)
+        .map(|s| s.compute_units)
+        .sum();
+    let cu_summary = if total_cu > 0 {
+        format!(" | compute units {} CU", total_cu)
+    } else {
+        String::new()
+    };
     let mut s = format!(
-        "TokenScope campaign {}\ntarget: {}   seed: {}\nexecuted {} | pass {} | execution failures {} | invariant violations {} | setup errors {} | findings {}\n\nRuns:\n",
+        "TokenScope campaign {}\ntarget: {}   seed: {}\nexecuted {} | pass {} | execution failures {} | invariant violations {} | setup errors {} | findings {}{}\n\nRuns:\n",
         c.id,
         c.target,
         c.seed,
@@ -142,14 +154,24 @@ pub fn render_text(c: &Campaign) -> String {
         t.execution_failures,
         t.invariant_violations,
         t.setup_errors,
-        t.findings
+        t.findings,
+        cu_summary
     );
     for r in &c.runs {
+        let cu_str = r.trace.as_ref().map_or(String::new(), |tr| {
+            let cu: u64 = tr.steps.iter().map(|s| s.compute_units).sum();
+            if cu > 0 {
+                format!(" ({} CU)", cu)
+            } else {
+                String::new()
+            }
+        });
         s.push_str(&format!(
-            "  {:<22} {:<32} {}",
+            "  {:<22} {:<32} {}{}",
             outcome_label(r.outcome),
             r.scenario.name,
-            r.scenario_id
+            r.scenario_id,
+            cu_str
         ));
         if let Some(e) = &r.setup_error {
             s.push_str(&format!("  ({e})"));
@@ -170,6 +192,18 @@ pub fn render_text(c: &Campaign) -> String {
 /// Render the Markdown campaign report.
 pub fn render_markdown(c: &Campaign) -> String {
     let t = c.totals();
+    let total_cu: u64 = c
+        .runs
+        .iter()
+        .filter_map(|r| r.trace.as_ref())
+        .flat_map(|tr| &tr.steps)
+        .map(|s| s.compute_units)
+        .sum();
+    let cu_metric_row = if total_cu > 0 {
+        format!("| **Total Compute Units** | `{} CU` |\n", total_cu)
+    } else {
+        String::new()
+    };
     let mut s = format!(
         "# TokenScope Campaign Report\n\n\
         | Metric | Value |\n\
@@ -183,10 +217,11 @@ pub fn render_markdown(c: &Campaign) -> String {
         | **Execution Failures** | {} |\n\
         | **Invariant Violations** | {} |\n\
         | **Setup Errors** | {} |\n\
-        | **Findings** | {} |\n\n\
+        | **Findings** | {} |\n\
+        {}\n\
         ## Runs\n\n\
-        | Scenario ID | Name | Outcome | Detail |\n\
-        |---|---|---|---|\n",
+        | Scenario ID | Name | Outcome | Compute Units | Detail |\n\
+        |---|---|---|---|---|\n",
         c.id,
         c.target,
         c.seed,
@@ -196,16 +231,26 @@ pub fn render_markdown(c: &Campaign) -> String {
         t.execution_failures,
         t.invariant_violations,
         t.setup_errors,
-        t.findings
+        t.findings,
+        cu_metric_row
     );
 
     for r in &c.runs {
         let detail = r.setup_error.as_deref().unwrap_or("-");
+        let cu_val = r.trace.as_ref().map_or("-".to_string(), |tr| {
+            let cu: u64 = tr.steps.iter().map(|s| s.compute_units).sum();
+            if cu > 0 {
+                format!("`{} CU`", cu)
+            } else {
+                "-".to_string()
+            }
+        });
         s.push_str(&format!(
-            "| `{}` | {} | `{}` | {} |\n",
+            "| `{}` | {} | `{}` | {} | {} |\n",
             r.scenario_id,
             r.scenario.name.replace('|', "\\|"),
             outcome_label(r.outcome),
+            cu_val,
             detail.replace('|', "\\|")
         ));
     }

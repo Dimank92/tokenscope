@@ -4,7 +4,7 @@
 .DS_Store
 /fuzz/artifacts
 node_modules
-/showcase/node_modules
-/showcase/out
+/showcase
+*.mp4
 /tokenscope-out
 /audit-results

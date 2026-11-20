@@ -1,3 +1,18 @@
+<p align="center">
+  <img src="assets/tokenscope-logo.svg" alt="TokenScope Logo" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/integral-830/tokenscope/actions/workflows/ci.yml"><img src="https://github.com/integral-830/tokenscope/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/integral-830/tokenscope/actions/workflows/tokenscope-audit.yml"><img src="https://github.com/integral-830/tokenscope/actions/workflows/tokenscope-audit.yml/badge.svg" alt="Security Audit" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
+  <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
+  <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
+  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-252%20passing-brightgreen.svg" alt="Tests: 252 passing" /></a>
+  <a href="docs/experiments/svm-framework.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
+  <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
+</p>
+
 # TokenScope
 
 TokenScope is a Rust framework for **adversarial testing of Solana Token-2022 integrations**. It
@@ -75,6 +90,7 @@ cargo test --workspace               # all tests (needs the built programs)
 | `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
 | `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
+| `completion <shell>` | generate shell autocompletion (`bash`, `zsh`, `fish`, `powershell`, `elvish`) | 0 |
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
 

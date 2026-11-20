@@ -235,6 +235,11 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             tui(opts, snapshot, out)
         }
         Command::Corpus { command } => corpus(command, out),
+        Command::Completion { shell } => {
+            use clap::CommandFactory;
+            clap_complete::generate(shell, &mut crate::Cli::command(), "tokenscope", out);
+            Ok(EXIT_OK)
+        }
     }
 }
 

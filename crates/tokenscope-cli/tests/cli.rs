@@ -686,3 +686,13 @@ fn oversized_inputs_and_limits_are_rejected_with_usage_errors() {
     assert_eq!(o.code, 2);
     assert!(o.stderr.contains("exceeds the limit"), "{}", o.stderr);
 }
+
+#[test]
+fn completion_generates_valid_scripts_for_supported_shells() {
+    for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {
+        let o = tokenscope(&["completion", shell]);
+        assert_eq!(o.code, 0, "failed for shell {shell}: {}", o.stderr);
+        assert!(!o.stdout.is_empty(), "empty output for shell {shell}");
+        assert!(o.stdout.contains("tokenscope"), "completion script missing binary name");
+    }
+}

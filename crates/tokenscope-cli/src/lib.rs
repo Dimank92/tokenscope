@@ -153,6 +153,12 @@ pub enum Command {
         #[command(subcommand)]
         command: CorpusCommand,
     },
+    /// Generate shell autocompletion script.
+    Completion {
+        /// Shell to generate completions for (`bash`, `zsh`, `fish`, `powershell`, `elvish`).
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
 }
 
 /// Corpus subcommands.
