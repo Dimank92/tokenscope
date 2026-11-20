@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
   <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
   <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
-  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-253%20passing-brightgreen.svg" alt="Tests: 253 passing" /></a>
+  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-259%20passing-brightgreen.svg" alt="Tests: 259 passing" /></a>
   <a href="docs/experiments/svm-framework.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
   <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
 </p>
@@ -24,7 +24,7 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 253 passing workspace
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 259 passing workspace
 > tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
 > `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
 > transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
@@ -33,8 +33,7 @@ Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrin
 > extension compatibility. See [Limitations](#limitations) and
 > [docs/supported-extensions.md](docs/supported-extensions.md) before relying on any result.
 > TokenScope does not detect vulnerabilities in general, and an invariant violation is **not**
-> proof of exploitability. It is also not the first tool in this space; see
-> [docs/research.md](docs/research.md) for an evidence-based comparison with Trident and Crucible.
+> proof of exploitability. It provides deterministic fuzzing and invariant checking over real SBF bytecodes.
 
 ## The demonstration
 
@@ -59,6 +58,18 @@ executed 14 | pass 12 | execution failures 2 | invariant violations 0 | setup er
 ```
 
 Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
+
+## Demo Video and Program Deployments
+
+* **Showcase Video (02:50):** `tokenscope-showcase.mp4` (under 3 minutes per hackathon rules). Demonstrates architecture, real Mollusk SVM execution, Pinocchio escrow invariant detection, and the live Ratatui terminal dashboard.
+* **On-Chain Programs (Pinocchio):** Built from source via `./scripts/build-programs.sh`:
+  * `demo-escrow-corrected`: `target/sbf-programs/demo_escrow_corrected.so`
+  * `demo-escrow-vulnerable`: `target/sbf-programs/demo_escrow_vulnerable.so`
+  * `demo-hook`: `target/sbf-programs/demo_hook.so`
+  * Deployed addresses (Solana Devnet):
+    * `demo-escrow-corrected`: `TBD`
+    * `demo-escrow-vulnerable`: `TBD`
+
 
 ## Quick start
 

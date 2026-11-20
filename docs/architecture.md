@@ -45,7 +45,7 @@ Design rules:
 * Ground truth is executed account state. The fee formula appears only in tests, as an independent
   cross-check.
 
-## Decisions (see `docs/research.md` for evidence)
+## Decisions
 
 * **Mollusk over LiteSVM** (experiment: `docs/experiments/svm-framework.md`).
 * **Native escrow with pinocchio**, no Anchor: smallest dependency surface.
