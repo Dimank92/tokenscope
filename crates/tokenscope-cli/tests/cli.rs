@@ -693,6 +693,9 @@ fn completion_generates_valid_scripts_for_supported_shells() {
         let o = tokenscope(&["completion", shell]);
         assert_eq!(o.code, 0, "failed for shell {shell}: {}", o.stderr);
         assert!(!o.stdout.is_empty(), "empty output for shell {shell}");
-        assert!(o.stdout.contains("tokenscope"), "completion script missing binary name");
+        assert!(
+            o.stdout.contains("tokenscope"),
+            "completion script missing binary name"
+        );
     }
 }
