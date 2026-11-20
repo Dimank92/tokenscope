@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
   <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
   <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
-  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-252%20passing-brightgreen.svg" alt="Tests: 252 passing" /></a>
+  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-253%20passing-brightgreen.svg" alt="Tests: 253 passing" /></a>
   <a href="docs/experiments/svm-framework.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
   <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
 </p>
@@ -24,7 +24,7 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 252 passing workspace
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 253 passing workspace
 > tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
 > `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
 > transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
