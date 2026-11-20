@@ -477,6 +477,8 @@ impl EscrowAdapter {
                 },
                 logs,
                 compute_units,
+                raw_before: None,
+                raw_after: None,
             });
         }
         Ok(trace)

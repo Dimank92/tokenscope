@@ -28,6 +28,8 @@ fn step(index: usize, action: Action, before: Snapshot, after: Snapshot, ok: boo
         },
         logs: vec!["log".into()],
         compute_units: 1,
+        raw_before: None,
+        raw_after: None,
     }
 }
 
@@ -472,6 +474,7 @@ fn custom_invariant_can_be_registered_and_evaluated() {
         preconditions: &[],
         expected: "vault != 42",
         exceptions: &[],
+        level: InvariantLevel::Custom,
     };
 
     let mut reg = InvariantRegistry::empty();
