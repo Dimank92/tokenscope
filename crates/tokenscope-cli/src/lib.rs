@@ -42,6 +42,10 @@ pub enum Format {
     Json,
     /// Human-readable text.
     Text,
+    /// Markdown security audit report.
+    Markdown,
+    /// SARIF 2.1.0 report for code scanning and CI integrations.
+    Sarif,
 }
 
 /// Subcommands.
@@ -67,8 +71,9 @@ pub enum Command {
         #[arg(long, default_value_t = 20, conflicts_with = "config")]
         count: usize,
         /// How scenarios are generated: `random` (fee scenarios), `extended` (extension and
-        /// adversarial templates) or `guided` (dimension-guided selection seeded by the built-in
-        /// suites and the regression corpus; not code-coverage-guided).
+        /// adversarial templates), `guided` (dimension-guided selection seeded by the built-in
+        /// suites and the regression corpus; not code-coverage-guided), or `stateful` (model-based
+        /// sequence generation using TokenReferenceModel).
         #[arg(long, default_value = "random", conflicts_with = "config")]
         strategy: String,
         /// Corpus directory whose scenarios seed `--strategy guided` (default: `fixtures/corpus`).
@@ -147,6 +152,12 @@ pub enum Command {
         /// Corpus operation.
         #[command(subcommand)]
         command: CorpusCommand,
+    },
+    /// Generate shell autocompletion script.
+    Completion {
+        /// Shell to generate completions for (`bash`, `zsh`, `fish`, `powershell`, `elvish`).
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
     },
 }
 

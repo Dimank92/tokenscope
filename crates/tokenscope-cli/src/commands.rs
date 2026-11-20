@@ -18,9 +18,10 @@ use tokenscope_invariants::catalog;
 use tokenscope_model::{
     Campaign, CorpusCase, Expectation, Finding, ModelError, OutcomeClass, Scenario,
 };
-use tokenscope_report::{render_json, render_text, write_artifacts};
+use tokenscope_report::{render_json, render_markdown, render_sarif, render_text, write_artifacts};
 use tokenscope_scenarios::{
     SuiteSelection, builtin_suite, extension_suite, generate, generate_extended, generate_guided,
+    generate_stateful,
 };
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError};
 
@@ -234,6 +235,11 @@ pub(crate) fn dispatch(cmd: Command, out: &mut dyn Write) -> Result<i32> {
             tui(opts, snapshot, out)
         }
         Command::Corpus { command } => corpus(command, out),
+        Command::Completion { shell } => {
+            use clap::CommandFactory;
+            clap_complete::generate(shell, &mut crate::Cli::command(), "tokenscope", out);
+            Ok(EXIT_OK)
+        }
     }
 }
 
@@ -407,6 +413,7 @@ enum Strategy {
     Random,
     Extended,
     Guided,
+    Stateful,
 }
 
 fn parse_strategy(name: &str) -> Result<Strategy> {
@@ -414,8 +421,9 @@ fn parse_strategy(name: &str) -> Result<Strategy> {
         "random" => Ok(Strategy::Random),
         "extended" => Ok(Strategy::Extended),
         "guided" => Ok(Strategy::Guided),
+        "stateful" => Ok(Strategy::Stateful),
         other => Err(usage(format!(
-            "unknown strategy `{other}`; expected random, extended or guided"
+            "unknown strategy `{other}`; expected random, extended, guided or stateful"
         ))),
     }
 }
@@ -457,6 +465,7 @@ fn run_campaigns(spec: &RunSpec, out_path: PathBuf, out: &mut dyn Write) -> Resu
         match spec.strategy {
             Strategy::Random => scenarios.extend(generate(spec.seed, spec.count, &t)),
             Strategy::Extended => scenarios.extend(generate_extended(spec.seed, spec.count, &t)),
+            Strategy::Stateful => scenarios.extend(generate_stateful(spec.seed, spec.count, &t)),
             Strategy::Guided => {
                 // Seeds: both built-in suites and the corpus, so the batch complements them.
                 let mut seeds = SuiteSelection::All.scenarios(&t);
@@ -564,6 +573,8 @@ fn report(id: &str, format: Format, dir: PathBuf, out: &mut dyn Write) -> Result
     match format {
         Format::Json => write!(out, "{}", render_json(&campaign))?,
         Format::Text => write!(out, "{}", render_text(&campaign))?,
+        Format::Markdown => write!(out, "{}", render_markdown(&campaign))?,
+        Format::Sarif => write!(out, "{}", render_sarif(&campaign))?,
     }
     Ok(EXIT_OK)
 }

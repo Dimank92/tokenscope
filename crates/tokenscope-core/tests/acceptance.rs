@@ -175,3 +175,65 @@ fn seeded_generation_runs_deterministically_and_corrected_never_violates() {
         assert!(fee && deposits, "unexpected finding {f:#?}");
     }
 }
+
+struct MockVaultAdapter;
+
+impl tokenscope_core::TargetAdapter for MockVaultAdapter {
+    fn target_id(&self) -> &str {
+        "custom-vault-target"
+    }
+
+    fn run(
+        &self,
+        scenario: &Scenario,
+    ) -> Result<tokenscope_model::ExecutionTrace, tokenscope_executor::ExecError> {
+        let snap_before = tokenscope_model::Snapshot {
+            vault_amount: 500,
+            escrow_recorded: 500,
+            depositor_balance: 1000,
+            ..tokenscope_model::Snapshot::default()
+        };
+        let snap_after = tokenscope_model::Snapshot {
+            vault_amount: 1500,
+            escrow_recorded: 1500,
+            depositor_balance: 0,
+            ..tokenscope_model::Snapshot::default()
+        };
+        let step = tokenscope_model::StepRecord {
+            index: 0,
+            action: scenario
+                .actions
+                .first()
+                .cloned()
+                .unwrap_or(Action::Deposit { amount: 1000 }),
+            before: snap_before,
+            after: snap_after,
+            status: tokenscope_model::StepStatus::Ok,
+            logs: vec!["Program log: Vault credited deposit".into()],
+            compute_units: 450,
+        };
+        Ok(tokenscope_model::ExecutionTrace {
+            schema_version: 1,
+            scenario_id: scenario.id(),
+            target: "custom-vault-target".into(),
+            initial: snap_before,
+            steps: vec![step],
+            accounts: vec![],
+        })
+    }
+}
+
+#[test]
+fn second_target_adapter_can_be_executed_and_generates_valid_campaign() {
+    let engine = Engine::new();
+    let adapter = MockVaultAdapter;
+    let s = builtin_suite(VULN)[0].clone();
+    let r = engine.run_scenario_with_adapter(&s, &adapter);
+    assert_eq!(r.outcome, OutcomeClass::Pass);
+    assert!(r.trace.is_some());
+
+    let c = engine.run_campaign_with_adapter("custom-vault-target", 42, &[s], &adapter);
+    assert_eq!(c.runs.len(), 1);
+    assert_eq!(c.totals().passed, 1);
+    assert_eq!(c.totals().invariant_violations, 0);
+}

@@ -450,3 +450,56 @@ fn findings_ignore_evaluations_that_point_outside_the_trace() {
     }
     assert!(findings(&scenario(), &t, &evals).is_empty());
 }
+
+#[test]
+fn registry_default_matches_catalog_and_evaluates_identically() {
+    let t = trace(vec![vulnerable_deposit()]);
+    let reg = InvariantRegistry::default();
+    assert_eq!(reg.len(), 6);
+    assert_eq!(reg.catalog().as_slice(), catalog().as_slice());
+
+    let evals_free = evaluate(&t);
+    let evals_reg = reg.evaluate(&t);
+    assert_eq!(evals_free, evals_reg);
+}
+
+#[test]
+fn custom_invariant_can_be_registered_and_evaluated() {
+    let custom_def = InvariantDef {
+        id: "INV-CUSTOM-001",
+        name: "Custom Test Invariant",
+        description: "Checks that vault is never 42",
+        preconditions: &[],
+        expected: "vault != 42",
+        exceptions: &[],
+    };
+
+    let mut reg = InvariantRegistry::empty();
+    assert!(reg.is_empty());
+
+    reg.register(FnInvariant::new(custom_def, |step| {
+        if step.after.vault_amount == 42 {
+            Verdict::Violated {
+                observed: "vault reached 42".into(),
+            }
+        } else {
+            Verdict::Held
+        }
+    }));
+
+    assert_eq!(reg.len(), 1);
+
+    let mut step_rec = vulnerable_deposit();
+    step_rec.after.vault_amount = 42;
+    let t = trace(vec![step_rec]);
+
+    let evals = reg.evaluate(&t);
+    assert_eq!(evals.len(), 1);
+    assert_eq!(evals[0].invariant_id, "INV-CUSTOM-001");
+    assert_eq!(
+        evals[0].verdict,
+        Verdict::Violated {
+            observed: "vault reached 42".into()
+        }
+    );
+}

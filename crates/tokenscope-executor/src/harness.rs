@@ -13,6 +13,7 @@ use solana_svm_log_collector::LogCollector;
 use spl_token_2022_interface::{
     extension::{
         BaseStateWithExtensions, ExtensionType, StateWithExtensions, account_len,
+        group_member_pointer, group_pointer, metadata_pointer,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig, instruction as fee_ix},
     },
     instruction as token_ix,
@@ -33,6 +34,8 @@ pub fn derive_address(label: &str) -> Pubkey {
 /// Decoded view of a Token-2022 token account (read from real account data).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TokenAccountView {
+    /// Owner of the token account.
+    pub owner: Pubkey,
     /// Spendable token balance.
     pub amount: u64,
     /// Fee amount withheld on this account by the transfer-fee extension, if present.
@@ -43,6 +46,15 @@ pub struct TokenAccountView {
     pub delegate: Option<Pubkey>,
     /// Remaining amount the delegate may spend.
     pub delegated_amount: u64,
+}
+
+/// Decoded view of a mint pointer extension (metadata, group, or group member).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PointerView {
+    /// Authority that can update the pointer, or `None` if immutable.
+    pub authority: Option<Pubkey>,
+    /// Address the pointer directs to, or `None` if unset.
+    pub address: Option<Pubkey>,
 }
 
 /// Execution environment holding a Mollusk SVM and its persistent account store.
@@ -132,6 +144,34 @@ impl Harness {
     /// Execute one instruction, persisting state on success (failed instructions leave state intact).
     pub fn execute(&self, ix: &Instruction) -> Result<(), ExecError> {
         match self.execute_logged(ix).error {
+            None => Ok(()),
+            Some(e) => Err(ExecError::Instruction(e)),
+        }
+    }
+
+    /// Execute multiple instructions atomically as a single transaction and report errors, logs
+    /// and compute usage. State persists only when the entire transaction succeeds.
+    pub fn execute_transaction_logged(&self, instructions: &[Instruction]) -> ExecReport {
+        let start = self.logs.borrow().get_recorded_content().len();
+        let result = self
+            .ctx
+            .process_transaction_instructions(instructions, Some(&self.payer));
+        let logs = self.logs.borrow().get_recorded_content()[start..].to_vec();
+        let error = if result.program_result.is_ok() {
+            None
+        } else {
+            Some(format!("{:?}", result.program_result))
+        };
+        ExecReport {
+            error,
+            logs,
+            compute_units: result.compute_units_consumed,
+        }
+    }
+
+    /// Execute multiple instructions atomically as a single transaction, persisting state on success.
+    pub fn execute_transaction(&self, instructions: &[Instruction]) -> Result<(), ExecError> {
+        match self.execute_transaction_logged(instructions).error {
             None => Ok(()),
             Some(e) => Err(ExecError::Instruction(e)),
         }
@@ -282,6 +322,36 @@ impl Harness {
         Ok(account)
     }
 
+    /// Create and initialize a Token-2022 multisig account.
+    pub fn create_multisig(
+        &self,
+        label: &str,
+        signers: &[&Pubkey],
+        m: u8,
+    ) -> Result<Pubkey, ExecError> {
+        use solana_program_pack::Pack;
+        let multisig = derive_address(&format!("multisig/{label}"));
+        let token = spl_token_2022_interface::id();
+        let space = spl_token_2022_interface::state::Multisig::LEN;
+        let ixs = [
+            solana_system_interface::instruction::create_account(
+                &self.payer,
+                &multisig,
+                self.rent_for(space),
+                space as u64,
+                &token,
+            ),
+            token_ix::initialize_multisig2(&token, &multisig, signers, m).map_err(|e| {
+                ExecError::Setup {
+                    step: "init-multisig-ix".into(),
+                    detail: e.to_string(),
+                }
+            })?,
+        ];
+        self.setup("create-multisig", &ixs)?;
+        Ok(multisig)
+    }
+
     /// Mint `amount` tokens to `destination` using the mint authority (the payer).
     pub fn mint_to(
         &self,
@@ -345,6 +415,140 @@ impl Harness {
         })
     }
 
+    /// Build a `TransferChecked` instruction signed by a multisig's individual signers.
+    #[allow(clippy::too_many_arguments)]
+    pub fn transfer_checked_multisig_ix(
+        &self,
+        source: &Pubkey,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        multisig: &Pubkey,
+        signers: &[&Pubkey],
+        amount: u64,
+        decimals: u8,
+    ) -> Result<Instruction, ExecError> {
+        token_ix::transfer_checked(
+            &spl_token_2022_interface::id(),
+            source,
+            mint,
+            destination,
+            multisig,
+            signers,
+            amount,
+            decimals,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "transfer-multisig-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `TransferCheckedWithFee` instruction (does not execute it).
+    #[allow(clippy::too_many_arguments)]
+    pub fn transfer_checked_with_fee_ix(
+        &self,
+        source: &Pubkey,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+        decimals: u8,
+        fee: u64,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::transfer_checked_with_fee(
+            &spl_token_2022_interface::id(),
+            source,
+            mint,
+            destination,
+            authority,
+            &[],
+            amount,
+            decimals,
+            fee,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "transfer-checked-with-fee-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `HarvestWithheldTokensToMint` instruction.
+    pub fn harvest_withheld_to_mint_ix(
+        &self,
+        mint: &Pubkey,
+        sources: &[&Pubkey],
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::harvest_withheld_tokens_to_mint(&spl_token_2022_interface::id(), mint, sources)
+            .map_err(|e| ExecError::Setup {
+                step: "harvest-withheld-to-mint-ix".into(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Build a `WithdrawWithheldTokensFromMint` instruction signed by `authority`.
+    pub fn withdraw_withheld_from_mint_ix(
+        &self,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::withdraw_withheld_tokens_from_mint(
+            &spl_token_2022_interface::id(),
+            mint,
+            destination,
+            authority,
+            &[],
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "withdraw-withheld-from-mint-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `WithdrawWithheldTokensFromAccounts` instruction signed by `authority`.
+    pub fn withdraw_withheld_from_accounts_ix(
+        &self,
+        mint: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        sources: &[&Pubkey],
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::withdraw_withheld_tokens_from_accounts(
+            &spl_token_2022_interface::id(),
+            mint,
+            destination,
+            authority,
+            &[],
+            sources,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "withdraw-withheld-from-accounts-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
+    /// Build a `SetTransferFee` instruction signed by the fee config authority.
+    pub fn set_transfer_fee_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
+    ) -> Result<Instruction, ExecError> {
+        fee_ix::set_transfer_fee(
+            &spl_token_2022_interface::id(),
+            mint,
+            authority,
+            &[],
+            transfer_fee_basis_points,
+            maximum_fee,
+        )
+        .map_err(|e| ExecError::Setup {
+            step: "set-transfer-fee-ix".into(),
+            detail: e.to_string(),
+        })
+    }
+
     fn account(&self, address: &Pubkey) -> Result<Account, ExecError> {
         self.ctx
             .account_store
@@ -368,11 +572,27 @@ impl Harness {
             .ok()
             .map(|e| u64::from(e.withheld_amount));
         Ok(TokenAccountView {
+            owner: state.base.owner,
             amount: state.base.amount,
             withheld,
             frozen: state.base.state == AccountState::Frozen,
             delegate: Option::<Pubkey>::from(state.base.delegate),
             delegated_amount: state.base.delegated_amount,
+        })
+    }
+
+    /// Decode a multisig account from its real on-chain data.
+    pub fn multisig(
+        &self,
+        address: &Pubkey,
+    ) -> Result<spl_token_2022_interface::state::Multisig, ExecError> {
+        use solana_program_pack::Pack;
+        let acct = self.account(address)?;
+        spl_token_2022_interface::state::Multisig::unpack_from_slice(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
         })
     }
 
@@ -395,6 +615,154 @@ impl Harness {
                 u64::from(f.maximum_fee),
             )
         }))
+    }
+
+    /// Read the withheld transfer fees accumulated on a mint (real mint account data).
+    pub fn mint_withheld(&self, mint: &Pubkey) -> Result<Option<u64>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<TransferFeeConfig>()
+            .ok()
+            .map(|c| u64::from(c.withheld_amount)))
+    }
+
+    /// Read the `MetadataPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_metadata_pointer(&self, mint: &Pubkey) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<metadata_pointer::MetadataPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .metadata_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Read the `GroupPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_group_pointer(&self, mint: &Pubkey) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<group_pointer::GroupPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .group_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Read the `GroupMemberPointer` extension state on `mint` (`None` when extension is absent).
+    pub fn mint_group_member_pointer(
+        &self,
+        mint: &Pubkey,
+    ) -> Result<Option<PointerView>, ExecError> {
+        let acct = self.account(mint)?;
+        let state =
+            StateWithExtensions::<Mint>::unpack(&acct.data).map_err(|e| ExecError::Decode {
+                account: mint.to_string(),
+                detail: e.to_string(),
+            })?;
+        Ok(state
+            .get_extension::<group_member_pointer::GroupMemberPointer>()
+            .ok()
+            .map(|p| PointerView {
+                authority: p
+                    .authority
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+                address: p
+                    .member_address
+                    .get()
+                    .map(|a| Pubkey::new_from_array(a.to_bytes())),
+            }))
+    }
+
+    /// Instruction to update the metadata pointer on `mint`.
+    pub fn update_metadata_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        metadata_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        metadata_pointer::instruction::update(&token, mint, authority, &[], metadata_address)
+            .map_err(|e| ExecError::Setup {
+                step: "update-metadata-pointer-ix".into(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Instruction to update the group pointer on `mint`.
+    pub fn update_group_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        group_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        group_pointer::instruction::update(&token, mint, authority, &[], group_address).map_err(
+            |e| ExecError::Setup {
+                step: "update-group-pointer-ix".into(),
+                detail: e.to_string(),
+            },
+        )
+    }
+
+    /// Instruction to update the group member pointer on `mint`.
+    pub fn update_group_member_pointer_ix(
+        &self,
+        mint: &Pubkey,
+        authority: &Pubkey,
+        member_address: Option<Pubkey>,
+    ) -> Result<Instruction, ExecError> {
+        let token = spl_token_2022_interface::id();
+        group_member_pointer::instruction::update(&token, mint, authority, &[], member_address)
+            .map_err(|e| ExecError::Setup {
+                step: "update-group-member-pointer-ix".into(),
+                detail: e.to_string(),
+            })
+    }
+
+    /// Advance the harness clock to the first slot of the given epoch.
+    pub fn warp_to_epoch(&mut self, epoch: u64) {
+        let slot = self
+            .ctx
+            .mollusk
+            .sysvars
+            .epoch_schedule
+            .get_first_slot_in_epoch(epoch);
+        self.ctx.mollusk.warp_to_slot(slot);
+    }
+
+    /// Current epoch according to the harness clock sysvar.
+    pub fn epoch(&self) -> u64 {
+        self.ctx.mollusk.sysvars.clock.epoch
     }
 
     /// Extension types present on a mint, decoded from real account data.
@@ -481,6 +849,73 @@ impl Harness {
                 cpi_guard::instruction::enable_cpi_guard(&token, account, owner, &[])
             } else {
                 cpi_guard::instruction::disable_cpi_guard(&token, account, owner, &[])
+            }
+            .map_err(map)?,
+        );
+        Ok(out)
+    }
+
+    /// Whether required transfer memos are enabled on a token account (`None` without extension),
+    /// decoded from real account data.
+    pub fn token_memo_transfer(&self, address: &Pubkey) -> Result<Option<bool>, ExecError> {
+        let acct = self.account(address)?;
+        let state = StateWithExtensions::<TokenAccount>::unpack(&acct.data).map_err(|e| {
+            ExecError::Decode {
+                account: address.to_string(),
+                detail: e.to_string(),
+            }
+        })?;
+        Ok(state
+            .get_extension::<spl_token_2022_interface::extension::memo_transfer::MemoTransfer>()
+            .ok()
+            .map(|m| bool::from(m.require_incoming_transfer_memos)))
+    }
+
+    /// The instructions that enable or disable required transfer memos on `account`. Enabling first
+    /// reallocates the account for the `MemoTransfer` extension when it is missing.
+    pub fn memo_transfer_instructions(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        enable: bool,
+    ) -> Result<Vec<Instruction>, ExecError> {
+        use spl_token_2022_interface::extension::memo_transfer;
+        let token = spl_token_2022_interface::id();
+        fn map(e: impl ToString) -> ExecError {
+            ExecError::Setup {
+                step: "memo-transfer-ix".into(),
+                detail: e.to_string(),
+            }
+        }
+        let mut out = Vec::new();
+        if enable && self.token_memo_transfer(account)?.is_none() {
+            out.push(
+                token_ix::reallocate(
+                    &token,
+                    account,
+                    &self.payer,
+                    owner,
+                    &[],
+                    &[ExtensionType::MemoTransfer],
+                )
+                .map_err(map)?,
+            );
+        }
+        out.push(
+            if enable {
+                memo_transfer::instruction::enable_required_transfer_memos(
+                    &token,
+                    account,
+                    owner,
+                    &[],
+                )
+            } else {
+                memo_transfer::instruction::disable_required_transfer_memos(
+                    &token,
+                    account,
+                    owner,
+                    &[],
+                )
             }
             .map_err(map)?,
         );

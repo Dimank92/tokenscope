@@ -58,6 +58,13 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "reference_model_scenario"
+path = "fuzz_targets/reference_model_scenario.rs"
+test = false
+doc = false
+bench = false
+
 # Slow: executes scenarios on the real SVM. Build with `--features engine`.
 [features]
 engine = ["tokenscope-fuzz-harness/engine"]

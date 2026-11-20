@@ -6,6 +6,7 @@
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BIN=${1:-"$ROOT/target/release/tokenscope"}
+[ -x "$BIN" ] || [ ! -x "$BIN.exe" ] || BIN="$BIN.exe"
 [ -x "$BIN" ] || { echo "binary not found: $BIN" >&2; exit 2; }
 export TOKENSCOPE_PROGRAM_DIR=${TOKENSCOPE_PROGRAM_DIR:-"$ROOT/target/sbf-programs"}
 W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
@@ -47,6 +48,7 @@ expect 1 "run both flavors" -- run --target demo-escrow --count 0 --out "$W/o3"
 expect 1 "run extensions suite (custody finding)" -- run --target demo-escrow-corrected --suite extensions --count 0 --out "$W/o4"
 expect_either "0 1" "run guided strategy (a batch need not contain a violation)" -- run --target demo-escrow-vulnerable --no-suite --count 6 --strategy guided --out "$W/o5"
 expect 0 "run extended strategy, corrected, 1 scenario" -- run --target demo-escrow-corrected --no-suite --count 1 --strategy extended --seed 4 --out "$W/o6"
+expect 0 "run stateful strategy, corrected, 1 scenario" -- run --target demo-escrow-corrected --no-suite --count 1 --strategy stateful --seed 5 --out "$W/o6s"
 expect 2 "run with bad suite" -- run --target demo-escrow-vulnerable --suite nope
 expect 2 "run with nothing to run" -- run --target demo-escrow-vulnerable --no-suite --count 0
 
@@ -62,6 +64,8 @@ expect 0 "minimize a finding" -- minimize "$W/o2/$V/findings/$F" --out "$W/min.j
 expect 2 "minimize malformed finding" -- minimize "$W/bad.json"
 expect 0 "report json" -- report "$V" --format json --out "$W/o2";   contains "$W/out" '"totals"' "report json"
 expect 0 "report text" -- report "$V" --format text --out "$W/o2";   contains "$W/out" "invariant violations" "report text"
+expect 0 "report markdown" -- report "$V" --format markdown --out "$W/o2"; contains "$W/out" "# TokenScope Campaign Report" "report markdown"
+expect 0 "report sarif" -- report "$V" --format sarif --out "$W/o2"; contains "$W/out" '"$schema"' "report sarif"
 expect 2 "report unknown id" -- report cp_0000000000000000 --out "$W/o2"
 expect 2 "report invalid id" -- report "../etc/passwd" --out "$W/o2"
 

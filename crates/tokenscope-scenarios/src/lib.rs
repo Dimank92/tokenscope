@@ -12,6 +12,7 @@ use tokenscope_model::{
 
 mod dimensions;
 mod guided;
+mod stateful;
 
 pub use dimensions::{
     AMOUNT_CLASSES, Coverage, FEE_CLASSES, amount_class, cells, fee_class, universe,
@@ -20,6 +21,7 @@ pub use guided::{
     BOUNDARY_BPS, BOUNDARY_MAX_FEE, GuidedBatch, boundary_scenarios, generate_extended,
     generate_guided, mutate, rounding_boundaries,
 };
+pub use stateful::generate_stateful;
 
 /// SplitMix64 pseudo-random generator (Steele, Lea, Flood 2014). Deterministic and portable.
 #[derive(Debug, Clone)]
@@ -442,6 +444,14 @@ mod proptests {
             prop_assert_eq!(a.len(), count);
             for s in &a { prop_assert!(s.validate().is_ok()); }
             prop_assert_eq!(a, generate(seed, count, "demo-escrow-vulnerable"));
+        }
+
+        #[test]
+        fn stateful_generation_is_valid_and_deterministic(seed in any::<u64>(), count in 1usize..8) {
+            let a = generate_stateful(seed, count, "demo-escrow-vulnerable");
+            prop_assert_eq!(a.len(), count);
+            for s in &a { prop_assert!(s.validate().is_ok()); }
+            prop_assert_eq!(a, generate_stateful(seed, count, "demo-escrow-vulnerable"));
         }
     }
 }

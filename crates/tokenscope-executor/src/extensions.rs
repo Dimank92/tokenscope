@@ -8,8 +8,9 @@ use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
 use spl_token_2022_interface::{
     extension::{
-        ExtensionType, default_account_state, interest_bearing_mint, pausable, scaled_ui_amount,
-        transfer_fee, transfer_hook,
+        ExtensionType, default_account_state, group_member_pointer, group_pointer,
+        interest_bearing_mint, metadata_pointer, pausable, scaled_ui_amount, transfer_fee,
+        transfer_hook,
     },
     instruction as token_ix,
     state::{AccountState, Mint},
@@ -58,6 +59,27 @@ pub enum MintExt {
         /// Multiplier in thousandths.
         multiplier_milli: u32,
     },
+    /// `MetadataPointer` with an optional authority and metadata address.
+    MetadataPointer {
+        /// Authority that can update the metadata address.
+        authority: Option<Pubkey>,
+        /// Address holding the metadata.
+        metadata_address: Option<Pubkey>,
+    },
+    /// `GroupPointer` with an optional authority and group address.
+    GroupPointer {
+        /// Authority that can update the group address.
+        authority: Option<Pubkey>,
+        /// Address holding the group.
+        group_address: Option<Pubkey>,
+    },
+    /// `GroupMemberPointer` with an optional authority and member address.
+    GroupMemberPointer {
+        /// Authority that can update the member address.
+        authority: Option<Pubkey>,
+        /// Address holding the member.
+        member_address: Option<Pubkey>,
+    },
 }
 
 impl MintExt {
@@ -73,6 +95,9 @@ impl MintExt {
             Self::MintCloseAuthority => ExtensionType::MintCloseAuthority,
             Self::InterestBearing { .. } => ExtensionType::InterestBearingConfig,
             Self::ScaledUiAmount { .. } => ExtensionType::ScaledUiAmount,
+            Self::MetadataPointer { .. } => ExtensionType::MetadataPointer,
+            Self::GroupPointer { .. } => ExtensionType::GroupPointer,
+            Self::GroupMemberPointer { .. } => ExtensionType::GroupMemberPointer,
         }
     }
 
@@ -123,6 +148,28 @@ impl MintExt {
                 mint,
                 Some(*payer),
                 f64::from(*multiplier_milli) / 1000.0,
+            ),
+            Self::MetadataPointer {
+                authority,
+                metadata_address,
+            } => metadata_pointer::instruction::initialize(
+                &token,
+                mint,
+                *authority,
+                *metadata_address,
+            ),
+            Self::GroupPointer {
+                authority,
+                group_address,
+            } => group_pointer::instruction::initialize(&token, mint, *authority, *group_address),
+            Self::GroupMemberPointer {
+                authority,
+                member_address,
+            } => group_member_pointer::instruction::initialize(
+                &token,
+                mint,
+                *authority,
+                *member_address,
             ),
         };
         ix.map_err(|e| ExecError::Setup {

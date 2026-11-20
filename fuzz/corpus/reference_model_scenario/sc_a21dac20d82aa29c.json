@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "name": "repeated-withdrawals",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": null
+  },
+  "initial_balance": 10000,
+  "actions": [
+    {
+      "kind": "deposit",
+      "amount": 1000
+    },
+    {
+      "kind": "withdraw"
+    },
+    {
+      "kind": "withdraw"
+    }
+  ]
+}

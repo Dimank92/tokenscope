@@ -8,14 +8,17 @@ and the difference is listed here. Error codes are Token-2022 `TokenError` value
 
 | Extension | Status | Where it is tested |
 |---|---|---|
-| TransferFeeConfig | supported (limited) | `executor/tests/transfer_fee.rs`, `adapter/tests/escrow.rs`, `core/tests/acceptance.rs` |
+| TransferFeeConfig | supported (operations & epoch delay) | `executor/tests/transfer_fee.rs`, `adapter/tests/escrow.rs`, `core/tests/acceptance.rs` |
 | Freeze / thaw of token accounts | supported (limited) | `executor/tests/transfer_fee.rs`, `adapter/tests/escrow.rs` |
 | DefaultAccountState | supported (limited) | `executor/tests/ext_default_state.rs`, `adapter/tests/extensions.rs` |
 | Pausable | supported (limited) | `executor/tests/ext_pausable.rs`, `adapter/tests/extensions.rs` |
 | TransferHook | supported (limited, fixture hook) | `executor/tests/ext_transfer_hook.rs`, `adapter/tests/extensions.rs` |
-| CPI Guard | supported (limited) | `executor/tests/ext_cpi_guard.rs`, `adapter/tests/extensions.rs` |
+| CPI Guard | supported (direct & CPI forwarder) | `executor/tests/ext_cpi_guard.rs`, `executor/tests/ext_cpi_forwarder.rs`, `adapter/tests/extensions.rs` |
 | Delegates (approve / revoke) | supported | `executor/tests/ext_delegates.rs`, `adapter/tests/extensions.rs` |
 | PermanentDelegate | supported | `executor/tests/ext_delegates.rs`, `adapter/tests/extensions.rs`, `core/tests/extension_suite.rs` |
+| Multisig authorities | supported | `executor/tests/ext_multisig.rs` |
+| MemoTransfer (required transfer memos) | supported | `executor/tests/ext_memo_transfer.rs` |
+| Pointer extensions (Metadata, Group, Member) | supported | `executor/tests/ext_pointers.rs` |
 | Extension compatibility / init order | supported (limited) | `executor/tests/ext_compat.rs` |
 
 Everything else is **not supported**: no claim is made (see the end).
@@ -32,8 +35,14 @@ used only as an independent cross-check in tests; invariants use decoded account
 * Insufficient funds is an instruction failure, not a setup error.
 * Combines with Pausable (a paused transfer leaves withheld fees untouched), TransferHook (the hook
   sees the *nominal* amount) and PermanentDelegate (its transfers still pay the fee).
-* Not covered: fee changes (`SetTransferFee` takes effect two epochs later; epochs are not advanced),
-  `TransferCheckedWithFee`, `WithdrawWithheldTokens*`, `HarvestWithheldTokensToMint`, fee-authority handling.
+* **Fee changes across epochs:** `SetTransferFee` delay is strictly 2 epochs. At epoch E and E+1 the
+  previous fee schedule applies; at epoch E+2 the new fee schedule becomes active (tested for both fee
+  increases and decreases with `warp_to_epoch`).
+* **TransferCheckedWithFee:** validates expected fee against calculated fee; mismatches return custom
+  error 0x20 (32 decimal, `FeeMismatch`).
+* **Harvest and withdrawal:** `HarvestWithheldTokensToMint` aggregates withheld fees from accounts to the
+  mint; `WithdrawWithheldTokensFromMint` and `WithdrawWithheldTokensFromAccounts` extract fees to a
+  destination account with fee-authority validation. Other signers fail with `OwnerMismatch` (4).
 
 ## Freeze and thaw
 
@@ -90,11 +99,62 @@ The docs state that a hook is not optional at the account level; observed on the
 * Enabling needs the `CpiGuard` account extension (the harness reallocates); only the owner can
   enable or disable (others get `OwnerMismatch`). The flag is decoded from the account.
 * Direct (top-level) operations are unaffected: an owner-signed transfer and an approve still work.
-* **CPI path** (through the escrow, which CPIs `TransferChecked` with the owner as authority): with the
-  guard on, the deposit fails with `CpiGuardTransferBlocked` (42), logged "CPI Guard is enabled, and a
-  program attempted to transfer user funds without using a delegate", and changes nothing; it works after the
-  guard is disabled (a top-level instruction).
-* Not covered: the other CPI restrictions (burn, approve, close, set-authority, delegate-authorized transfers).
+* **CPI path:** exercised both through the escrow and through the dedicated CPI forwarder program
+  (`programs/demo-forwarder` using Pinocchio `invoke_with_slice`):
+  * Owner-signed transfer via CPI fails with `CpiGuardTransferBlocked` (42), logged "CPI Guard is enabled,
+    and a program attempted to transfer user funds via CPI without using a delegate".
+  * Burn via CPI fails with `CpiGuardBurnBlocked` (43).
+  * Approve via CPI fails with `CpiGuardApproveBlocked` (45).
+  * Close account directing lamports to a third party via CPI fails with `CpiGuardCloseAccountBlocked` (44).
+  * Set authority via CPI fails with `CpiGuardSetAuthorityBlocked` (46).
+  * Disabling CPI Guard from within CPI fails with `CpiGuardSettingsLocked` (41), logged "CPI Guard status
+    cannot be changed in CPI".
+  * **Delegate transfers via CPI are allowed:** when an owner approves a delegate at top level, that
+    delegate can execute transfers via CPI under CPI Guard; the transfer succeeds and decrements the
+    allowance.
+  * Disabling CPI Guard at top level restores ordinary CPI transfer operations for the owner.
+
+## Multisig authorities
+
+* Multisig accounts created via `initialize_multisig2` with $m$-of-$n$ signers ($1 \le m \le n \le 11$).
+  State is unpacked from real account data using the `Pack` trait.
+* **Threshold signing:** transfers with the exact threshold $m$ distinct signer keys succeed. Duplicate
+  signers in the signer list and unrecognized signer keys fail with `MissingRequiredSignature` / `OwnerMismatch`.
+* Re-initialization of an already initialized multisig account fails with `AlreadyInUse` (6).
+* **Client builder vs on-chain runtime divergence:**
+  * Client instruction builder (`initialize_multisig2`) rejects $m=0$ and $m > n$ client-side.
+  * Direct on-chain instructions: the runtime rejects $m=0$ (`InvalidNumberOfRequiredSigners`, 8) and
+    $n=12$ (`InvalidNumberOfProvidedSigners`, 7).
+  * **Critical finding:** the runtime on-chain accepts $m > n$ (e.g. $m=3, n=2$), creating an
+    unspendable multisig that permanently locks all tokens controlled by it, because the required
+    signer threshold cannot be met by the member keys.
+
+## Required transfer memos (MemoTransfer)
+
+* Accounts with `MemoTransfer` enabled reject incoming transfers that lack a preceding memo instruction
+  with custom error `0x24` (36 decimal), logged "No memo in previous instruction required for recipient to receive a transfer".
+* Real multi-instruction atomic transactions executed via `Harness::execute_transaction_logged`:
+  `[memo_ix, transfer_ix]` succeeds.
+* **Finding:** an empty memo (`""` or 0 bytes) completely satisfies the memo requirement.
+* **Instruction ordering is strict:** placing the memo after the transfer fails with `0x24`.
+* **Atomic transaction rollback:** when a multi-instruction transaction fails on a later instruction,
+  earlier state changes (such as the successful transfer) roll back completely.
+* Disabling `MemoTransfer` restores plain transfers without memos.
+
+## Pointer extensions (MetadataPointer, GroupPointer, GroupMemberPointer)
+
+* Mint pointer extensions store an update authority and a target account address on the mint.
+  Scope boundary: pointer extensions store pointers and update authorities; they do not require or
+  manipulate TokenMetadata or TokenGroup account data.
+* **Initialization:** pointers initialize with an authority and target address, or point at the mint
+  with the harness payer as authority.
+* **Updates:** authorized authorities can update the pointer address to a new account or clear it to
+  `None`. State is decoded from real mint account data into `PointerView`.
+* **Authorization:** unauthorized update attempts fail with `OwnerMismatch` (4) and leave the pointer unchanged.
+* **Immutable pointers:** initializing with `authority = None` creates an immutable pointer. All update
+  attempts fail with `NoAuthorityExists` (29).
+* **Coexistence:** all three pointer extensions (`MetadataPointer`, `GroupPointer`, `GroupMemberPointer`)
+  coexist on a single mint account, each maintaining independent authority and address state.
 
 ## Delegates and the permanent delegate
 
@@ -137,10 +197,9 @@ change; repeated withdrawals are zero-amount no-ops; deposits and withdrawals at
 
 ## Not supported (no claim is made)
 
-Confidential transfers and their fees, memo-required transfers, interest accrual and scaled-UI-amount
-behavior beyond mint creation, metadata / group / pointer extensions, `TransferCheckedWithFee`, fee changes
-across epochs, withheld-fee harvesting and withdrawal, multisig authorities, token-account close semantics
-beyond what is listed, and any extension interaction not named above.
+Confidential transfers and their fees, interest accrual and scaled-UI-amount behavior beyond mint
+creation, full TokenMetadata and TokenGroup account structures (pointers are supported), token-account
+close semantics beyond what is listed, and any extension interaction not named above.
 
 ## Version caveat
 

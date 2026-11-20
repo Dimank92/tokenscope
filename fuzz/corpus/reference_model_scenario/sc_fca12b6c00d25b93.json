@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "withdraw-with-nothing-recorded",
+  "seed": 0,
+  "target": "demo-escrow-vulnerable",
+  "mint": {
+    "decimals": 6,
+    "transfer_fee": {
+      "basis_points": 200,
+      "maximum_fee": 18446744073709551615
+    }
+  },
+  "initial_balance": 10,
+  "actions": [
+    {
+      "kind": "withdraw"
+    }
+  ]
+}

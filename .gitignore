@@ -3,3 +3,10 @@
 *.log
 .DS_Store
 /fuzz/artifacts
+node_modules
+/showcase
+*.mp4
+/tokenscope-out
+/audit-results
+preview-readme.html
+generate_preview.py

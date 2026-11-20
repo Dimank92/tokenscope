@@ -92,6 +92,30 @@ fn json_report_matches_campaign_contents() {
 fn rendering_is_deterministic() {
     assert_eq!(render_json(&campaign()), render_json(&campaign()));
     assert_eq!(render_text(&campaign()), render_text(&campaign()));
+    assert_eq!(render_markdown(&campaign()), render_markdown(&campaign()));
+    assert_eq!(render_sarif(&campaign()), render_sarif(&campaign()));
+}
+
+#[test]
+fn markdown_report_renders_headers_and_tables() {
+    let c = campaign();
+    let md = render_markdown(&c);
+    assert!(md.contains("# TokenScope Campaign Report"));
+    assert!(md.contains(&c.id));
+    assert!(md.contains("INV-ACCT-001"));
+    assert!(md.contains("State Deltas"));
+    assert!(md.contains("tokenscope replay x.json"));
+}
+
+#[test]
+fn sarif_report_is_valid_json_and_contains_schema_and_results() {
+    let c = campaign();
+    let sarif = render_sarif(&c);
+    let v: serde_json::Value = serde_json::from_str(&sarif).unwrap();
+    assert_eq!(v["version"], "2.1.0");
+    assert_eq!(v["runs"][0]["tool"]["driver"]["name"], "TokenScope");
+    assert_eq!(v["runs"][0]["results"].as_array().unwrap().len(), 1);
+    assert_eq!(v["runs"][0]["results"][0]["ruleId"], "INV-ACCT-001");
 }
 
 #[test]
@@ -120,5 +144,10 @@ fn artifacts_are_written_and_reloadable() {
     assert_eq!(&f, c.findings().next().unwrap());
     let s = Scenario::from_json(&std::fs::read_to_string(&a.scenarios[0]).unwrap()).unwrap();
     assert_eq!(s, f.reproduction.scenario);
-    assert!(a.report_json.exists() && a.report_text.exists());
+    assert!(
+        a.report_json.exists()
+            && a.report_text.exists()
+            && a.report_markdown.exists()
+            && a.report_sarif.exists()
+    );
 }

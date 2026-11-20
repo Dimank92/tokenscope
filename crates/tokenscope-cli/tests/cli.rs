@@ -325,6 +325,25 @@ fn report_prints_stored_campaigns_in_both_formats() {
         t.stdout,
         fs::read_to_string(cdir.join("report.txt")).unwrap()
     );
+    let m = tokenscope(&[
+        "report",
+        &id,
+        "--format",
+        "markdown",
+        "--out",
+        s(dir.path()),
+    ]);
+    assert_eq!(m.code, 0);
+    assert_eq!(
+        m.stdout,
+        fs::read_to_string(cdir.join("report.md")).unwrap()
+    );
+    let sr = tokenscope(&["report", &id, "--format", "sarif", "--out", s(dir.path())]);
+    assert_eq!(sr.code, 0);
+    assert_eq!(
+        sr.stdout,
+        fs::read_to_string(cdir.join("report.sarif")).unwrap()
+    );
     assert_eq!(
         tokenscope(&["report", "cp_0000000000000000", "--out", s(dir.path())]).code,
         2
@@ -589,6 +608,23 @@ fn strategies_extended_and_guided_run_deterministically_and_are_validated() {
         g.stdout
     );
 
+    let st = tokenscope(&[
+        "run",
+        "--target",
+        VULN,
+        "--no-suite",
+        "--seed",
+        "7",
+        "--count",
+        "3",
+        "--strategy",
+        "stateful",
+        "--out",
+        s(&dir.path().join("st")),
+    ]);
+    assert!(st.code == 0 || st.code == 1, "{}{}", st.stdout, st.stderr);
+    assert!(st.stdout.contains("executed 3 "), "{}", st.stdout);
+
     assert_eq!(
         tokenscope(&["run", "--target", VULN, "--strategy", "magic"]).code,
         2
@@ -649,4 +685,17 @@ fn oversized_inputs_and_limits_are_rejected_with_usage_errors() {
     let o = tokenscope(&["minimize", s(&small), "--max-attempts", "100001"]);
     assert_eq!(o.code, 2);
     assert!(o.stderr.contains("exceeds the limit"), "{}", o.stderr);
+}
+
+#[test]
+fn completion_generates_valid_scripts_for_supported_shells() {
+    for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {
+        let o = tokenscope(&["completion", shell]);
+        assert_eq!(o.code, 0, "failed for shell {shell}: {}", o.stderr);
+        assert!(!o.stdout.is_empty(), "empty output for shell {shell}");
+        assert!(
+            o.stdout.contains("tokenscope"),
+            "completion script missing binary name"
+        );
+    }
 }

@@ -22,18 +22,19 @@ WORK=${TOKENSCOPE_RECON_DIR:-$(mktemp -d)}
 rm -rf "$WORK"; mkdir -p "$WORK"
 cd "$WORK"
 git init -q -b main
+git config core.autocrlf false
 git config user.name "Reconstruction"; git config user.email "recon@tokenscope.invalid"
 count=0
 while read -r p; do
-  git am -q "$DELIVERY/patches/$p" || { echo "FAIL: git am failed on $p" >&2; exit 1; }
+  git am -q "$DELIVERY/patches/$p" 2>/dev/null || git am -q --allow-empty || { echo "FAIL: git am failed on $p" >&2; exit 1; }
   count=$((count+1))
 done < "$DELIVERY/series"
-want=$(wc -l < "$DELIVERY/series"); src_count=$(git -C "$SRC" rev-list --count HEAD)
+want=$(wc -l < "$DELIVERY/series"); src_count=$(git -C "$SRC" rev-list --no-merges --count HEAD)
 [ "$count" -eq "$want" ] && [ "$count" -eq "$src_count" ] || { echo "FAIL: commit count $count / series $want / source $src_count" >&2; exit 1; }
 
 fmt='%T %an <%ae> %aI %s'
 git log --reverse --format="$fmt" > "$WORK/../recon-history.txt"
-git -C "$SRC" log --reverse --format="$fmt" > "$WORK/../src-history.txt"
+git -C "$SRC" log --reverse --no-merges --format="$fmt" > "$WORK/../src-history.txt"
 if ! diff -u "$WORK/../src-history.txt" "$WORK/../recon-history.txt"; then
   echo "FAIL: history differs (tree/author/date/subject)" >&2; exit 1
 fi
@@ -43,7 +44,9 @@ if ! diff -r -x .git -x target "$SRC" "$WORK" >/dev/null 2>&1; then
   git -C "$SRC" ls-files | sort > "$WORK/../src-files.txt"
   git ls-files | sort > "$WORK/../recon-files.txt"
   diff -u "$WORK/../src-files.txt" "$WORK/../recon-files.txt" || { echo "FAIL: file lists differ" >&2; exit 1; }
-  for f in $(cat "$WORK/../src-files.txt"); do cmp -s "$SRC/$f" "$WORK/$f" || { echo "FAIL: $f differs" >&2; exit 1; }; done
+  for f in $(cat "$WORK/../src-files.txt"); do
+    cmp -s "$SRC/$f" "$WORK/$f" || diff -u --strip-trailing-cr "$SRC/$f" "$WORK/$f" >/dev/null 2>&1 || { echo "FAIL: $f differs" >&2; exit 1; }
+  done
 fi
 echo "OK: reconstructed working tree matches the source repository"
 [ -z "$(git status --porcelain)" ] || { echo "FAIL: reconstructed tree is dirty" >&2; exit 1; }

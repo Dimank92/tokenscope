@@ -1,3 +1,18 @@
+<p align="center">
+  <img src="assets/tokenscope-logo.svg" alt="TokenScope Logo" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/integral-830/tokenscope/actions/workflows/ci.yml"><img src="https://github.com/integral-830/tokenscope/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/integral-830/tokenscope/actions/workflows/tokenscope-audit.yml"><img src="https://github.com/integral-830/tokenscope/actions/workflows/tokenscope-audit.yml/badge.svg" alt="Security Audit" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
+  <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
+  <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
+  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-253%20passing-brightgreen.svg" alt="Tests: 253 passing" /></a>
+  <a href="docs/experiments/svm-framework.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
+  <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
+</p>
+
 # TokenScope
 
 TokenScope is a Rust framework for **adversarial testing of Solana Token-2022 integrations**. It
@@ -9,10 +24,13 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** early (version 0.1.0). One target (a demo escrow) and six invariants. Token-2022
-> behavior verified by executable tests: transfer fees, freeze/thaw, DefaultAccountState, Pausable,
-> transfer hooks (fixture hook), CPI Guard, delegates, the permanent delegate and extension
-> compatibility. See [Limitations](#limitations) and
+> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 253 passing workspace
+> tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
+> `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
+> transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
+> delegate, multisig authorities (threshold signing and on-chain quirks), required transfer memos
+> with atomic rollback, pointer extensions (MetadataPointer, GroupPointer, GroupMemberPointer), and
+> extension compatibility. See [Limitations](#limitations) and
 > [docs/supported-extensions.md](docs/supported-extensions.md) before relying on any result.
 > TokenScope does not detect vulnerabilities in general, and an invariant violation is **not**
 > proof of exploitability. It is also not the first tool in this space; see
@@ -66,12 +84,13 @@ cargo test --workspace               # all tests (needs the built programs)
 |---|---|---|
 | `doctor` | verify the environment, incl. a real fee transfer | 0 ok, 3 problem |
 | `inspect [--target T]` | show target configuration and invariants | 0 |
-| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
+| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided\|stateful] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
 | `replay <scenario-file>` | re-run one scenario | 0 / 1 / 2 / 3 |
 | `minimize <finding-file> [--out F] [--max-attempts N]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
-| `report <campaign-id> --format json\|text` | print a stored report | 0, 2 |
+| `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
 | `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
+| `completion <shell>` | generate shell autocompletion (`bash`, `zsh`, `fish`, `powershell`, `elvish`) | 0 |
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
 
@@ -80,7 +99,7 @@ boundary scenarios), `all`, `none`. Note that the corrected escrow still reports
 `extensions` suite (`permanent-delegate-drains-vault`): neither flavor checks the mint's extensions.
 Strategies: `random` (seeded fee scenarios), `extended` (extension-aware templates), `guided` (mutates the
 suites and the regression corpus and keeps only scenarios that add a new *input-space* cell; it is not
-guided by program coverage).
+guided by program coverage), and `stateful` (model-based state-machine generation driven by `TokenReferenceModel`).
 
 ## Repository layout
 
@@ -88,12 +107,38 @@ guided by program coverage).
 `programs/demo-escrow`, `fixtures/` (scenarios and the regression corpus), `scripts/`, `docs/`.
 Architecture: [docs/architecture.md](docs/architecture.md).
 
+## Execution boundaries and security model
+
+TokenScope models the Solana execution environment with explicit boundaries:
+
+1. **In-process Mollusk SVM vs live validator:**
+   * TokenScope executes un-mocked SBF BPF program bytecodes directly in-memory via the Mollusk SVM harness (`43.2 us` per instruction).
+   * This design prioritizes invariant fuzzing throughput (over 23,000 instructions per second on a single CPU core) rather than full network simulation (Gossip, Tower BFT, RPC latency, or priority fee auctions).
+   * Transaction-level atomicity and multi-instruction rollback are exercised via `execute_transaction_logged`, while cryptographic Ed25519 signature verification is abstracted to `is_signer` checks.
+
+2. **Supported Token-2022 extensions:**
+   * `TransferFeeConfig` and `TransferFeeAmount`: Ceiling division math, withheld fee tracking on recipient accounts and mint, 2-epoch delay (`warp_to_epoch`), and permissionless harvest.
+   * `CpiGuard`: Strict caller validation rejecting owner-signed `Transfer`, `Burn`, `CloseAccount`, and `SetAuthority` at `stack_height > 1`, while permitting `DelegateTransfer`.
+   * `MemoTransfer`: SPL memo requirement enforcement and full multi-instruction atomic rollback.
+   * `Multisig`: On-chain threshold enforcement ($M \le N$) and runtime quirk verification ($M > N$ permanently locking funds).
+   * `Pointers`: `MetadataPointer`, `GroupPointer`, and `GroupMemberPointer` authority update lifecycle and immutability lock (`authority = None`).
+   * `DefaultAccountState`, `Pausable`, and `PermanentDelegate`.
+
+3. **Roadmap v2 boundaries (deliberately scoped out):**
+   * *Confidential Transfers (ZK ElGamal):* Requires twisted ElGamal proof generation and the `ZkTokenProof` system program, which would slow down in-memory SVM fuzzing by orders of magnitude.
+   * *Dynamic `ExtraAccountMetaList` Resolution:* Transfer hooks currently execute against explicit validation fixtures rather than resolving dynamic third-party account lists via `spl-tlv-account-resolution`.
+   * *TokenMetadata TLV Payloads:* Pointers to metadata accounts are verified, but internal Metaplex Borsh/TLV schemas are not parsed.
+
+4. **CI/CD Security Automation:**
+   * TokenScope natively emits OASIS SARIF 2.1.0 reports (`--format sarif`), integrating directly into GitHub Code Scanning and Pull Request security gates via `.github/workflows/tokenscope-audit.yml`.
+
 ## Limitations
 
 * One target program (the demo escrow). Token-2022 coverage is listed with its limits in
-  [docs/supported-extensions.md](docs/supported-extensions.md); confidential transfers, memo-required
-  transfers, metadata/pointer extensions and multisig are **not covered**. The transfer-hook tests use a
-  fixture hook program, not a production one.
+  [docs/supported-extensions.md](docs/supported-extensions.md); confidential transfers and production
+  TokenMetadata account data are **not covered**. Pointer extensions, multisig authorities, required
+  transfer memos, and CPI Guard restrictions are verified by dedicated executable test suites. The
+  transfer-hook tests use a fixture hook program, not a production one.
 * Authorization is modeled as the depositor-signature, account-identity and initialization checks
   (`INV-AUTH-001`); other authority paths are not exercised.
 * Scenario generation is seeded pseudo-random or *input-space*-guided; it never observes program coverage.
@@ -113,17 +158,11 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 
 | Script | Purpose |
 |---|---|
-| `scripts/build-programs.sh` | build escrow (two flavors) and demo hook from source |
-| `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (44 checks) |
+| `scripts/build-programs.sh` | build escrow (two flavors), demo hook and CPI forwarder from source |
+| `scripts/release-check.sh [bin]` | exercise every command and exit code on a built binary (49 checks) |
 | `scripts/check-tui-terminal.py` | verify terminal restoration on quit, error, panic, SIGTERM, SIGHUP (pty) |
 | `scripts/fuzz.sh <target> [s]` | libFuzzer run on the stable compiler ([fuzz/README.md](fuzz/README.md)) |
 | `cargo run --release -p tokenscope-core --example bench` | benchmarks ([docs/benchmarks.md](docs/benchmarks.md)) |
-| `scripts/export-patches.sh`, `scripts/verify-reconstruction.sh` | ordered patch series and clean-room check |
-
-## Reproducibility and patch delivery
-
-The repository history is also delivered as an ordered `git format-patch` series outside the source
-tree; see [CONTRIBUTING.md](CONTRIBUTING.md#patch-delivery) and `scripts/verify-reconstruction.sh`.
 
 ## License
 
