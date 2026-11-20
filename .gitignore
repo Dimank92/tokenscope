@@ -8,3 +8,5 @@ node_modules
 *.mp4
 /tokenscope-out
 /audit-results
+preview-readme.html
+generate_preview.py
