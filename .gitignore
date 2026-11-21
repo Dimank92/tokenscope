@@ -6,7 +6,12 @@
 node_modules
 /showcase
 *.mp4
+!assets/tokenscope-showcase.mp4
+!assets/tokenscope-tui-recording.mp4
+devnet-deployer-keypair.json
 /tokenscope-out
 /audit-results
 preview-readme.html
 generate_preview.py
+.remotion/
+scratch/

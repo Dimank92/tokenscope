@@ -71,6 +71,15 @@ Invariants specific to transfer hooks, CPI Guard and pausable behavior: those ex
 exercised through scenarios and execution-failure outcomes (the escrow cannot serve them), not through a
 dedicated invariant.
 
+## Invariant classification levels
+
+Invariants are tiered by scope via `InvariantLevel`:
+
+* **`GlobalSvm`:** Fundamental SVM invariants (e.g., failure atomicity `INV-ATOM-001`).
+* **`Token2022`:** Extension-specific token rules (e.g., fee conservation `INV-CONS-001`, custody `INV-CUST-001`).
+* **`TargetSpecific`:** Application-level accounting and state rules (e.g., escrow balance tracking `INV-ACCT-001`, solvency `INV-SOLV-001`).
+* **`Custom`:** User-defined or protocol-specific rules.
+
 ## Adding an invariant
 
 State id, preconditions, expected behavior and exceptions in `InvariantDef`; implement a

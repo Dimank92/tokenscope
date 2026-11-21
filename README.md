@@ -59,17 +59,75 @@ executed 14 | pass 12 | execution failures 2 | invariant violations 0 | setup er
 
 Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
 
-## Demo Video and Program Deployments
+## Showcase Video and Demo
 
-* **Showcase Video (02:50):** `tokenscope-showcase.mp4` (under 3 minutes per hackathon rules). Demonstrates architecture, real Mollusk SVM execution, Pinocchio escrow invariant detection, and the live Ratatui terminal dashboard.
-* **On-Chain Programs (Pinocchio):** Built from source via `./scripts/build-programs.sh`:
+[![TokenScope Demo Video](assets/tokenscope-video-preview.png)](assets/tokenscope-showcase.mp4)
+
+> **Watch Demo Video:** [assets/tokenscope-showcase.mp4](assets/tokenscope-showcase.mp4) (02:48 runtime, strictly under the 3-minute hackathon limit).
+> Features real Mollusk SVM execution against un-mocked Token-2022 bytecodes, invariant detection on Pinocchio escrow, deterministic failure minimization, and the live Ratatui TUI dashboard.
+
+### Interface & Execution Screenshots
+
+<p align="center">
+  <img src="assets/screenshot-1-tui.png" alt="TokenScope Interactive TUI Dashboard" width="100%" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshot-2-cli-run.png" alt="CLI Execution: Invariant Detection" width="49%" />
+  <img src="assets/screenshot-3-sarif-report.png" alt="SARIF 2.1.0 Security Gate" width="49%" />
+</p>
+
+## Devnet Deployments
+
+* **Target Programs (Pinocchio):** Built from source via `./scripts/build-programs.sh`:
   * `demo-escrow-corrected`: `target/sbf-programs/demo_escrow_corrected.so`
+    * Devnet Program ID: [`AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj`](https://explorer.solana.com/address/AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj?cluster=devnet)
   * `demo-escrow-vulnerable`: `target/sbf-programs/demo_escrow_vulnerable.so`
+    * Devnet Program ID: [`BYNHabimxQiTqDbRwvjMxvdQsHZfEq2Em8A1BcMah258`](https://explorer.solana.com/address/BYNHabimxQiTqDbRwvjMxvdQsHZfEq2Em8A1BcMah258?cluster=devnet) (*educational exploit sandbox*)
   * `demo-hook`: `target/sbf-programs/demo_hook.so`
-  * Deployed addresses (Solana Devnet):
-    * `demo-escrow-corrected`: `TBD`
-    * `demo-escrow-vulnerable`: `TBD`
 
+> [!IMPORTANT]
+> **Security & Deployment Notice:** `demo-escrow-corrected` is the production-hardened reference implementation. `demo-escrow-vulnerable` is an intentional defect sandbox for TokenScope invariant verification; per [SECURITY.md](SECURITY.md), it must never be funded with mainnet assets.
+
+
+
+
+## Installation & CI/CD Integration
+
+### 1-Line CLI Install
+
+Install the TokenScope CLI binary directly from source:
+
+```bash
+cargo install --git https://github.com/integral-830/tokenscope tokenscope-cli --locked
+```
+
+### GitHub Actions Workflow (Zero-Config Security Gate)
+
+Add TokenScope to any Solana repository (`.github/workflows/tokenscope.yml`) to run Token-2022 invariant verification on pull requests with native SARIF 2.1.0 alerts in the GitHub Security tab:
+
+```yaml
+name: TokenScope Token-2022 Security Gate
+on: [push, pull_request]
+
+jobs:
+  tokenscope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install TokenScope
+        run: cargo install --git https://github.com/integral-830/tokenscope tokenscope-cli --locked
+      - name: Run Token-2022 Invariant Suite
+        run: tokenscope run --suite all --format sarif --out audit-results || true
+      - name: Upload SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: audit-results/report.sarif
+```
 
 ## Quick start
 
