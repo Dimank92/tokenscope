@@ -23,10 +23,10 @@ produce findings.
 
 | Crate | Responsibility | Depends on |
 |---|---|---|
-| `tokenscope-model` | Serializable, validated types: `Scenario`, `Action`, `ExecutionTrace`, `Finding`, `Campaign`, `CorpusCase`, `OutcomeClass`; content-derived IDs; schema versioning | serde, sha2, thiserror |
+| `tokenscope-model` | Serializable, validated types: `Scenario`, `Action`, `ExecutionTrace`, `Finding`, `Campaign`, `CorpusCase`, `OutcomeClass`, `RawAccount`, `RawSnapshot`; content-derived IDs; schema versioning | serde, sha2, thiserror |
 | `tokenscope-executor` | `Harness`: creates Token-2022 mints/accounts via real instructions (`MintPlan` / `MintExt` for fee, hook, default state, pausable, permanent delegate, non-transferable, close authority, interest-bearing, scaled UI), loads program ELFs (escrow, demo hook), executes with unlimited log capture, decodes real account state (frozen, paused, delegate, CPI Guard, hook counter) | mollusk-svm, spl-token-2022-interface |
-| `tokenscope-adapter` | `EscrowAdapter`: deploys the escrow, creates accounts, builds instructions, records snapshots | executor, model |
-| `tokenscope-invariants` | Pure functions over traces; documented preconditions/exceptions; finding construction | model |
+| `tokenscope-adapter` | `TargetAdapter` trait (`AdapterCapabilities`, `AdapterVersion`) and `EscrowAdapter`: deploys programs, creates accounts, builds instructions, records snapshots | executor, model |
+| `tokenscope-invariants` | Pure functions over traces with `InvariantLevel` classification (`GlobalSvm`, `Token2022`, `TargetSpecific`, `Custom`); finding construction | model |
 | `tokenscope-scenarios` | Core and extension suites, seeded generators (random, extension-aware), boundary exploration, deterministic mutation, dimension tracking and guided selection | model |
 | `tokenscope-shrinker` | Generic bounded deterministic minimizer driven by a failure predicate | model |
 | `tokenscope-core` | `Engine` (run, replay, minimize, campaign) and the on-disk corpus | adapter, invariants, shrinker |
