@@ -12,9 +12,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-CI (`.github/workflows/ci.yml`: lint, test with release/TUI/fuzz-smoke checks, audit) mirrors these gates; it has not
-been executed outside the development sandbox. Other checks: `scripts/release-check.sh`,
-`scripts/check-tui-terminal.py`, `scripts/fuzz.sh`, `cargo audit` (exceptions live in `.cargo/audit.toml` with their
+CI (`.github/workflows/ci.yml`: lint, test with release/TUI/fuzz-smoke checks, audit) mirrors these gates on GitHub Actions. Other checks: `scripts/release-check.sh`,
+`scripts/check-tui-terminal.py`, `scripts/fuzz.sh`, and `cargo audit` (exceptions live in `.cargo/audit.toml` with their
 justification in `docs/dependency-review.md`).
 
 Never silence a warning or weaken a test to get a green build. If a test expectation is wrong,
@@ -38,23 +37,13 @@ One coherent, independently understandable change per commit, with a descriptive
 (conventional prefixes: `feat`, `fix`, `test`, `docs`, `build`, `chore`). Run the gates above before
 committing. Do not commit secrets, keypairs, caches or build artifacts (`target/`).
 
-## Patch delivery
+## Pull Requests
 
-The history is delivered as an ordered `git format-patch` series **outside** the source tree
-(default `../tokenscope-patches`), with the canonical `PATCH_MANIFEST.md` and `PATCHES_README.md`
-generated there:
+Contributions follow standard GitHub fork-and-pull-request workflows:
 
-```sh
-./scripts/export-patches.sh ../tokenscope-patches     # regenerate after ANY commit or history change
-./scripts/verify-reconstruction.sh ../tokenscope-patches --run-tests
-```
-
-`verify-reconstruction.sh` creates a fresh repository, applies every patch listed in `series` with
-`git am`, then checks commit count, per-commit **tree hash, author, author date and subject**, and
-the final tracked files against the source repository; with `--run-tests` it also builds the
-programs and runs fmt, clippy and the tests inside the reconstructed repository. Commit hashes
-necessarily differ after `git am`, so they are not compared. Patches must never depend on
-uncommitted files.
+1. Create a descriptive feature branch from `main`.
+2. Ensure `./scripts/build-programs.sh`, `cargo test --workspace`, and `cargo clippy --workspace --all-targets -- -D warnings` pass cleanly.
+3. Open a Pull Request against `main`. All CI checks must pass before merging.
 
 ## Development aids
 

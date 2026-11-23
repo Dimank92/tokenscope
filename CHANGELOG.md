@@ -56,10 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Reference model fuzzing:**
   * Added `reference_model_scenario` fuzz target in `tokenscope-fuzz-harness` and `fuzz/` verifying pure state machine transitions, fee ceilings, and atomic rollback on arbitrary inputs.
   * Added seed corpus and stable compiler mutation tests in `tokenscope-fuzz-harness/tests/targets.rs`.
-* **Patch delivery and clean-room verification:**
-  * Updated `scripts/export-patches.sh` and `scripts/verify-reconstruction.sh` to handle linear patch sequences across merge commits and normalize line endings.
-  * Regenerated delivery patch series (70 patches in `../tokenscope-patches`).
-  * Automated clean-room verification verifying applied patches, identical tree hashes, identical commit metadata, and zero working tree drift.
+* **Release verification and CI hardening:**
+  * Added automated clean-room verification for workspace crates, ensuring tree hash integrity, clippy compliance, and deterministic test outputs.
+  * Verified reproducible test passes across all 10 workspace packages and native SBF programs.
 
 #### Round 2: Hooks, State, Invariants, and Fuzzing
 * Added transfer-hook fixture program `programs/demo-hook` for atomic transfer validation and rejection.
