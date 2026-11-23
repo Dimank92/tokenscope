@@ -47,7 +47,7 @@ Design rules:
 
 ## Decisions
 
-* **Mollusk over LiteSVM** (experiment: `docs/experiments/svm-framework.md`).
+* **Mollusk over LiteSVM for real Token-2022 execution**: TokenScope executes on-chain programs directly at the instruction level using Mollusk SVM. This eliminates transaction fee, signature, and blockhash plumbing, provides deterministic instruction-level failure atomicity, inspects raw program return codes explicitly, and uses the verified mainnet Token-2022 ELF bundled by `mollusk-svm-programs-token-2022`.
 * **Native escrow with pinocchio**, no Anchor: smallest dependency surface.
 * **Program kept out of the host workspace**: different toolchain (platform-tools Rust), own lockfile.
 * **Scenario/finding IDs are content hashes** so artifacts are self-verifying and dedupe naturally.

@@ -9,7 +9,7 @@
   <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
   <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
   <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-259%20passing-brightgreen.svg" alt="Tests: 259 passing" /></a>
-  <a href="docs/experiments/svm-framework.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
+  <a href="docs/architecture.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
   <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
 </p>
 
@@ -61,9 +61,9 @@ Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
 
 ## Showcase Video and Demo
 
-[![TokenScope Demo Video](assets/tokenscope-video-preview.png)](assets/tokenscope-showcase.mp4)
+https://github.com/user-attachments/assets/9d5a5c23-4715-4365-a486-77e84d1d793d
 
-> **Watch Demo Video:** [assets/tokenscope-showcase.mp4](assets/tokenscope-showcase.mp4) (02:48 runtime, strictly under the 3-minute hackathon limit).
+> **Video Walkthrough:** [assets/tokenscope-showcase.mp4](assets/tokenscope-showcase.mp4) (02:49 runtime, strictly under the 3-minute hackathon limit).
 > Features real Mollusk SVM execution against un-mocked Token-2022 bytecodes, invariant detection on Pinocchio escrow, deterministic failure minimization, and the live Ratatui TUI dashboard.
 
 ### Interface & Execution Screenshots
@@ -76,6 +76,27 @@ Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
   <img src="assets/screenshot-2-cli-run.png" alt="CLI Execution: Invariant Detection" width="49%" />
   <img src="assets/screenshot-3-sarif-report.png" alt="SARIF 2.1.0 Security Gate" width="49%" />
 </p>
+
+## Solana Ecosystem Integration
+
+TokenScope integrates directly with low-level Solana execution primitives to test programs against genuine on-chain conditions without mocks or heuristics:
+
+1. **In-Process Solana Virtual Machine (Mollusk SVM):**
+   Executes un-mocked SBF programs using the Mollusk execution harness. It loads the official mainnet-dump ELF bytecode of the Solana Token-2022 program (`mollusk-svm-programs-token-2022`), testing contracts against genuine Solana runtime behavior.
+2. **Comprehensive Token-2022 Extension Coverage:**
+   Systematically explores state transitions across complex Solana extensions:
+   * **Transfer Fees:** Verifies nominal vs. received balance deltas, epoch fee transitions, and withholding logic.
+   * **CPI Guard:** Enforces cross-program invocation boundaries, ensuring untrusted programs cannot hijack owner-authorized transfers.
+   * **Transfer Hooks:** Resolves required extra account metadata across cross-program invocations.
+   * **Authorities & Policies:** Validates Permanent Delegates, DefaultAccountState, Pausable, and Multisig threshold logic.
+3. **Native SBF On-Chain Reference Targets (Pinocchio):**
+   Includes production-grade on-chain escrow and hook programs written in native Rust with Pinocchio (zero-dependency SBF), compiling directly to `sbf` ELF shared objects.
+4. **Live Solana Devnet Deployments:**
+   Reference contracts are compiled with Solana platform-tools v1.58 and deployed on Solana Devnet:
+   * Hardened Reference Escrow: [`AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj`](https://explorer.solana.com/address/AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj?cluster=devnet)
+   * Vulnerability Sandbox: [`BYNHabimxQiTqDbRwvjMxvdQsHZfEq2Em8A1BcMah258`](https://explorer.solana.com/address/BYNHabimxQiTqDbRwvjMxvdQsHZfEq2Em8A1BcMah258?cluster=devnet)
+5. **Decoded Account State Invariants:**
+   Instead of tracking transaction receipts, TokenScope decodes raw Solana account data directly after each instruction step to verify economic invariants (solvency, custody, balance consistency).
 
 ## Devnet Deployments
 
@@ -137,8 +158,8 @@ Requirements: Rust 1.99.0 (MSRV 1.97), and for building the on-chain demo progra
 
 ```sh
 ./scripts/build-programs.sh          # builds both escrow flavors from source into target/sbf-programs/
-cargo build -p tokenscope-cli        # debug build (release builds have not been tested)
-export PATH="$PWD/target/debug:$PATH"
+cargo build --release -p tokenscope-cli
+export PATH="$PWD/target/release:$PATH"
 
 tokenscope doctor                    # verifies programs, bundled Token-2022 and real execution
 tokenscope inspect                   # targets, accounts, instructions, invariants
@@ -215,12 +236,11 @@ TokenScope models the Solana execution environment with explicit boundaries:
   engine, not the on-chain programs; the real-SVM `replay_scenario` target has not been fuzzed.
 * Fuzzing ran for minutes on the stable compiler without AddressSanitizer; benchmarks come from one shared VM.
 * `cargo audit` reports one advisory reachable only via Mollusk's Agave dependency (accepted and justified in
-  [docs/dependency-review.md](docs/dependency-review.md)). The CI workflow has been written and syntax-checked but
-  not executed.
+  [docs/dependency-review.md](docs/dependency-review.md)). All CI workflows run automatically in GitHub Actions.
 * Token-2022 is the mainnet-snapshot ELF bundled by `mollusk-svm-programs-token-2022` 0.16.2; it
   may differ from other Token-2022 builds.
 * Execution is instruction-level (no signature verification, fees or blockhash); see
-  `docs/experiments/svm-framework.md`.
+  [docs/architecture.md](docs/architecture.md).
 * An invariant violation shows a property failing on observed state, not that funds can be stolen.
 
 ## Verification scripts

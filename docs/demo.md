@@ -1,13 +1,13 @@
 # Demo: vulnerable vs. corrected escrow
 
-All output below was produced by the commands shown on this repository's code (debug build).
+All output below was produced by the commands shown on this repository's code.
 Campaign and scenario IDs are content hashes; they stay stable until the scenarios or targets change.
 
 ## 1. Build and check
 
 ```sh
 ./scripts/build-programs.sh           # builds target/sbf-programs/demo_escrow_{vulnerable,corrected}.so from source
-cargo build -p tokenscope-cli && export PATH="$PWD/target/debug:$PATH"
+cargo build --release -p tokenscope-cli && export PATH="$PWD/target/release:$PATH"
 tokenscope doctor                     # ends with "doctor: environment OK"
 ```
 
