@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Added seed corpus and stable compiler mutation tests in `tokenscope-fuzz-harness/tests/targets.rs`.
 * **Release verification and CI hardening:**
   * Added automated clean-room verification for workspace crates, ensuring tree hash integrity, clippy compliance, and deterministic test outputs.
-  * Verified reproducible test passes across all 10 workspace packages and native SBF programs.
+  * Verified reproducible test passes across all 11 workspace crates and native SBF programs.
 
 #### Round 2: Hooks, State, Invariants, and Fuzzing
 * Added transfer-hook fixture program `programs/demo-hook` for atomic transfer validation and rejection.
@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added reproducible benchmark suite across scenario generation, SVM lifecycle, invariant checks, and shrinking in `docs/benchmarks.md`.
 
 #### Round 1: Core Architecture and Demo
-* Scaffolded 10 workspace crates with `tokenscope-model`, `tokenscope-executor`, `tokenscope-adapter`, `tokenscope-invariants`, `tokenscope-shrinker`, `tokenscope-report`, `tokenscope-cli`, and `tokenscope-tui`.
+* Scaffolded 11 workspace crates with `tokenscope-model`, `tokenscope-executor`, `tokenscope-adapter`, `tokenscope-invariants`, `tokenscope-scenarios`, `tokenscope-core`, `tokenscope-shrinker`, `tokenscope-report`, `tokenscope-cli`, `tokenscope-tui`, and `tokenscope-fuzz-harness`.
 * Implemented native SBF escrow demo (`programs/demo-escrow`) with vulnerable and corrected flavors.
 * Implemented 6 core invariants (`INV-ACCT-001`, `INV-SOLV-001`, `INV-ATOM-001`, `INV-CONS-001`, `INV-AUTH-001`, `INV-CUST-001`).
 * Implemented bounded deterministic shrinker with gap-halving candidates.

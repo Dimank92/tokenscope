@@ -35,6 +35,7 @@ produce findings.
 | `tokenscope-tui` | Ratatui interface: pure `App` state, worker-thread `runner`, `ui` rendering, terminal `driver` | core, report, invariants |
 | `tokenscope-fuzz-harness` | Bodies of the libFuzzer targets (`fuzz/`), also run on stable by tests | all of the above (core behind the `engine` feature) |
 | `programs/demo-escrow` | On-chain demo (pinocchio), separate lockfile, built by `scripts/build-programs.sh` | pinocchio 0.11.2 |
+| `programs/demo-forwarder` | CPI forwarder fixture (invoke_with_slice), same build script | pinocchio 0.11.2 |
 | `programs/demo-hook` | Transfer-hook fixture (counter, reject flag), same build script | pinocchio 0.11.2 |
 
 Design rules:

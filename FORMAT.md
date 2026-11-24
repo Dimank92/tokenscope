@@ -83,8 +83,8 @@ scenarios allow at most 64 actions, 8 extensions and a 128-byte name. See `docs/
 
 ## Artifact directory layout
 
-`<out>/<campaign-id>/campaign.json`, `report.json`, `report.txt`, `findings/<finding-id>.json`
-(input for `minimize`), `scenarios/<scenario-id>.json` (input for `replay`).
+`<out>/<campaign-id>/campaign.json`, `report.json`, `report.txt`, `report.md`, `report.sarif`,
+`findings/<finding-id>.json` (input for `minimize`), `scenarios/<scenario-id>.json` (input for `replay`).
 
 ## Compatibility policy
 

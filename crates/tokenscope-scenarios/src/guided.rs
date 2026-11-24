@@ -189,14 +189,15 @@ pub fn mutate(s: &Scenario, rng: &mut SplitMix64) -> Scenario {
                 .collect();
             if !idxs.is_empty() {
                 let i = idxs[rng.below(idxs.len() as u64) as usize];
-                let a = m.actions[i].amount().unwrap();
-                let v = match rng.below(4) {
-                    0 => a.saturating_add(1),
-                    1 => a.saturating_sub(1),
-                    2 => a / 2,
-                    _ => a.saturating_mul(2),
-                };
-                m.actions[i] = m.actions[i].with_amount(v);
+                if let Some(a) = m.actions[i].amount() {
+                    let v = match rng.below(4) {
+                        0 => a.saturating_add(1),
+                        1 => a.saturating_sub(1),
+                        2 => a / 2,
+                        _ => a.saturating_mul(2),
+                    };
+                    m.actions[i] = m.actions[i].with_amount(v);
+                }
             }
         }
         1 => {

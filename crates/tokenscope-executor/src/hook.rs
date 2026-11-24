@@ -108,7 +108,17 @@ impl Harness {
     pub fn hook_counter(&self, hook: &HookFixture) -> Result<HookCounter, ExecError> {
         let raw = self.raw_account(&hook.counter)?;
         let d = &raw.data;
-        let le = |r: std::ops::Range<usize>| u64::from_le_bytes(d[r].try_into().expect("8 bytes"));
+        if d.len() < 17 {
+            return Err(ExecError::Decode {
+                account: hook.counter.to_string(),
+                detail: format!("hook counter data length {} is less than 17", d.len()),
+            });
+        }
+        let le = |r: std::ops::Range<usize>| {
+            let mut b = [0u8; 8];
+            b.copy_from_slice(&d[r]);
+            u64::from_le_bytes(b)
+        };
         Ok(HookCounter {
             invocations: le(0..8),
             reject: d[8] != 0,
