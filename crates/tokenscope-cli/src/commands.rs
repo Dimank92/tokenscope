@@ -336,7 +336,9 @@ fn inspect(target: Option<String>, out: &mut dyn Write) -> Result<i32> {
         None => TARGETS.iter().map(|t| (*t).to_string()).collect(),
     };
     for t in &targets {
-        let flavor = EscrowFlavor::from_target_id(t).expect("resolved target");
+        let Some(flavor) = EscrowFlavor::from_target_id(t) else {
+            continue;
+        };
         writeln!(out, "target: {t}")?;
         writeln!(
             out,

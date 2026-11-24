@@ -378,6 +378,17 @@ impl InvariantRegistry {
         }
         out
     }
+
+    /// Build findings from evaluations using this registry's registered invariant definitions.
+    pub fn findings(
+        &self,
+        scenario: &Scenario,
+        trace: &ExecutionTrace,
+        evaluations: &[Evaluation],
+    ) -> Vec<Finding> {
+        let cat = self.catalog();
+        findings_with_catalog(scenario, trace, evaluations, &cat)
+    }
 }
 
 /// Evaluate every invariant on every step of `trace`, in step then catalog order.
@@ -483,6 +494,16 @@ pub fn findings(
     trace: &ExecutionTrace,
     evaluations: &[Evaluation],
 ) -> Vec<Finding> {
+    findings_with_catalog(scenario, trace, evaluations, &catalog())
+}
+
+/// Build findings looking up invariant definitions in a provided catalog slice.
+pub fn findings_with_catalog(
+    scenario: &Scenario,
+    trace: &ExecutionTrace,
+    evaluations: &[Evaluation],
+    defs: &[InvariantDef],
+) -> Vec<Finding> {
     let mut seen = Vec::<&'static str>::new();
     let mut out = Vec::new();
     for e in evaluations {
@@ -496,10 +517,11 @@ pub fn findings(
         let Some(step) = trace.steps.get(e.step_index) else {
             continue;
         };
-        let def = catalog()
-            .into_iter()
-            .find(|d| d.id == e.invariant_id)
-            .expect("known invariant");
+        let def = defs.iter().find(|d| d.id == e.invariant_id);
+        let expected_desc = match def {
+            Some(d) => format!("{} ({})", d.expected, d.name),
+            None => format!("custom invariant {}", e.invariant_id),
+        };
         let (severity, rationale) = severity_for(e.invariant_id);
         let scenario_id = scenario.id();
         out.push(Finding {
@@ -510,7 +532,7 @@ pub fn findings(
             seed: scenario.seed,
             invariant_id: e.invariant_id.into(),
             class: OutcomeClass::InvariantViolation,
-            expected: format!("{} ({})", def.expected, def.name),
+            expected: expected_desc,
             observed: format!("step {}: {observed}", e.step_index),
             deltas: evidence(trace, &step.before, &step.after),
             logs: step.logs.clone(),

@@ -72,10 +72,7 @@ impl Screen {
     }
 
     fn index(self) -> usize {
-        Screen::ALL
-            .iter()
-            .position(|s| *s == self)
-            .expect("screen in ALL")
+        Screen::ALL.iter().position(|s| *s == self).unwrap_or(0)
     }
 }
 

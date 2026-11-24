@@ -505,4 +505,17 @@ fn custom_invariant_can_be_registered_and_evaluated() {
             observed: "vault reached 42".into()
         }
     );
+
+    // Verify findings construction works for custom invariants without panic:
+    // 1. Through the registry (resolves exact registered metadata)
+    let f_reg = reg.findings(&scenario(), &t, &evals);
+    assert_eq!(f_reg.len(), 1);
+    assert_eq!(f_reg[0].invariant_id, "INV-CUSTOM-001");
+    assert_eq!(f_reg[0].expected, "vault != 42 (Custom Test Invariant)");
+
+    // 2. Through the standalone free function (graceful fallback)
+    let f = findings(&scenario(), &t, &evals);
+    assert_eq!(f.len(), 1);
+    assert_eq!(f[0].invariant_id, "INV-CUSTOM-001");
+    assert_eq!(f[0].expected, "custom invariant INV-CUSTOM-001");
 }

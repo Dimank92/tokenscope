@@ -81,16 +81,27 @@ https://github.com/user-attachments/assets/9d5a5c23-4715-4365-a486-77e84d1d793d
 
 TokenScope integrates directly with low-level Solana execution primitives to test programs against genuine on-chain conditions without mocks or heuristics:
 
+### Why Solana?
+
+Solana's Token-2022 program (Token Extensions) represents a paradigm shift from monolithic smart contracts to protocol-level composable token behaviors. However, extensions such as transfer fees, transfer hooks, permanent delegates, and CPI guards introduce subtle composability hazards:
+* **Nominal vs Received Assumptions:** Off-chain unit tests and transaction mocks often assume nominal amounts equal received balances, failing to detect transfer fee shortfalls.
+* **Client vs Runtime Divergence:** Client-side instruction builders mask on-chain runtime acceptance quirks (such as multisig $M > N$ fund locks).
+* **EVM-Centric Tool Blindspots:** Conventional audit tools cannot execute Solana SBF/BPF bytecodes or model CPI account-resolution constraints.
+
+TokenScope solves this by providing a native, deterministic SVM testing framework purpose-built for the Solana runtime.
+
+### How is Token-2022 Uniquely Tested?
+
 1. **In-Process Solana Virtual Machine (Mollusk SVM):**
    Executes un-mocked SBF programs using the Mollusk execution harness. It loads the official mainnet-dump ELF bytecode of the Solana Token-2022 program (`mollusk-svm-programs-token-2022`), testing contracts against genuine Solana runtime behavior.
 2. **Comprehensive Token-2022 Extension Coverage:**
    Systematically explores state transitions across complex Solana extensions:
-   * **Transfer Fees:** Verifies nominal vs. received balance deltas, epoch fee transitions, and withholding logic.
+   * **Transfer Fees:** Verifies nominal vs. received balance deltas, epoch fee transitions (2-epoch lag), and withholding logic.
    * **CPI Guard:** Enforces cross-program invocation boundaries, ensuring untrusted programs cannot hijack owner-authorized transfers.
    * **Transfer Hooks:** Resolves required extra account metadata across cross-program invocations.
    * **Authorities & Policies:** Validates Permanent Delegates, DefaultAccountState, Pausable, and Multisig threshold logic.
 3. **Native SBF On-Chain Reference Targets (Pinocchio):**
-   Includes production-grade on-chain escrow and hook programs written in native Rust with Pinocchio (zero-dependency SBF), compiling directly to `sbf` ELF shared objects.
+   Includes production-grade on-chain escrow and hook programs written in native Rust with Pinocchio 0.11.2 (zero-dependency SBF), compiling directly to `sbf` ELF shared objects.
 4. **Live Solana Devnet Deployments:**
    Reference contracts are compiled with Solana platform-tools v1.58 and deployed on Solana Devnet:
    * Hardened Reference Escrow: [`AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj`](https://explorer.solana.com/address/AcYw1BmDMimEN7Simi8urSatz9YRvJrBBBwyD5mvwWUj?cluster=devnet)
@@ -142,12 +153,16 @@ jobs:
       - name: Install TokenScope
         run: cargo install --git https://github.com/integral-830/tokenscope tokenscope-cli --locked
       - name: Run Token-2022 Invariant Suite
-        run: tokenscope run --suite all --format sarif --out audit-results || true
+        run: tokenscope run --target demo-escrow-corrected --count 50 --strategy stateful --out audit-results || true
+      - name: Generate SARIF Security Report
+        run: |
+          CAMPAIGN_ID=$(ls -td audit-results/cp_* | head -n 1 | xargs -n 1 basename)
+          tokenscope report "$CAMPAIGN_ID" --format sarif --out audit-results > audit-results/tokenscope.sarif
       - name: Upload SARIF to GitHub Security Tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: audit-results/report.sarif
+          sarif_file: audit-results/tokenscope.sarif
 ```
 
 ## Quick start
