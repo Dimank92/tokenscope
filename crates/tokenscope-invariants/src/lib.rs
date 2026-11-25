@@ -166,7 +166,9 @@ pub const PAUSE_001: InvariantDef = InvariantDef {
         "the step is a deposit, withdraw, delegate transfer, or permanent-delegate drain",
     ],
     expected: "step fails and before == after",
-    exceptions: &["ApproveDelegate, FreezeAccount, Pause, and Resume remain callable per Token-2022 semantics"],
+    exceptions: &[
+        "ApproveDelegate, FreezeAccount, Pause, and Resume remain callable per Token-2022 semantics",
+    ],
     level: InvariantLevel::Token2022,
 };
 
@@ -179,7 +181,9 @@ pub const FREEZE_001: InvariantDef = InvariantDef {
         "depositor_source is frozen (for deposit or delegate transfer) OR vault is frozen (for deposit, withdraw, or permanent-delegate drain)",
     ],
     expected: "step fails and before == after",
-    exceptions: &["withdrawals to withdraw_destination remain valid when only depositor_source is frozen and vault is thawed"],
+    exceptions: &[
+        "withdrawals to withdraw_destination remain valid when only depositor_source is frozen and vault is thawed",
+    ],
     level: InvariantLevel::Token2022,
 };
 

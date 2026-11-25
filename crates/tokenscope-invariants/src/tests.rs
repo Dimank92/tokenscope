@@ -772,13 +772,7 @@ fn cpi_001_blocks_owner_cpi_deposit_and_allows_delegate_transfer() {
     after_bad.vault_amount = 500;
     after_bad.escrow_recorded = 500;
     after_bad.depositor_balance = 9_500;
-    let bad = step(
-        0,
-        Action::Deposit { amount: 500 },
-        guarded,
-        after_bad,
-        true,
-    );
+    let bad = step(0, Action::Deposit { amount: 500 }, guarded, after_bad, true);
     assert!(matches!(
         reg.evaluate(&trace(vec![bad]))
             .iter()

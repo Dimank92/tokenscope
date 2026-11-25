@@ -721,7 +721,10 @@ fn extended_invariants_and_profiles_suite_work_end_to_end() {
         "INV-CPI-001",
         "INV-HOOK-001",
     ] {
-        assert!(ins_ext.stdout.contains(id), "inspect --extended missing {id}");
+        assert!(
+            ins_ext.stdout.contains(id),
+            "inspect --extended missing {id}"
+        );
     }
 
     // Core suite on demo-escrow-corrected passes without --extended,
@@ -750,7 +753,11 @@ fn extended_invariants_and_profiles_suite_work_end_to_end() {
         s(&dir_ext),
     ]);
     assert_eq!(run_ext.code, 1, "{}{}", run_ext.stdout, run_ext.stderr);
-    assert!(run_ext.stdout.contains("INV-ZERO-001"), "{}", run_ext.stdout);
+    assert!(
+        run_ext.stdout.contains("INV-ZERO-001"),
+        "{}",
+        run_ext.stdout
+    );
 
     // Combined mint profiles suite (`--suite profiles`, 5 scenarios) runs cleanly.
     let dir_prof = dir.path().join("prof");
@@ -767,12 +774,36 @@ fn extended_invariants_and_profiles_suite_work_end_to_end() {
         s(&dir_prof),
     ]);
     assert_eq!(run_prof.code, 1, "{}{}", run_prof.stdout, run_prof.stderr);
-    assert!(run_prof.stdout.contains("executed 5 "), "{}", run_prof.stdout);
-    assert!(run_prof.stdout.contains("INV-CUST-001"), "{}", run_prof.stdout);
-    assert!(run_prof.stdout.contains("INV-ZERO-001"), "{}", run_prof.stdout);
-    assert!(!run_prof.stdout.contains("INV-PAUSE-001"), "{}", run_prof.stdout);
-    assert!(!run_prof.stdout.contains("INV-FREEZE-001"), "{}", run_prof.stdout);
-    assert!(!run_prof.stdout.contains("INV-CPI-001"), "{}", run_prof.stdout);
+    assert!(
+        run_prof.stdout.contains("executed 5 "),
+        "{}",
+        run_prof.stdout
+    );
+    assert!(
+        run_prof.stdout.contains("INV-CUST-001"),
+        "{}",
+        run_prof.stdout
+    );
+    assert!(
+        run_prof.stdout.contains("INV-ZERO-001"),
+        "{}",
+        run_prof.stdout
+    );
+    assert!(
+        !run_prof.stdout.contains("INV-PAUSE-001"),
+        "{}",
+        run_prof.stdout
+    );
+    assert!(
+        !run_prof.stdout.contains("INV-FREEZE-001"),
+        "{}",
+        run_prof.stdout
+    );
+    assert!(
+        !run_prof.stdout.contains("INV-CPI-001"),
+        "{}",
+        run_prof.stdout
+    );
 
     // Full suite (`--suite full`) combines core + extensions + profiles = 29 scenarios.
     let dir_full = dir.path().join("full");
@@ -789,7 +820,11 @@ fn extended_invariants_and_profiles_suite_work_end_to_end() {
         s(&dir_full),
     ]);
     assert_eq!(run_full.code, 1, "{}{}", run_full.stdout, run_full.stderr);
-    assert!(run_full.stdout.contains("executed 29 "), "{}", run_full.stdout);
+    assert!(
+        run_full.stdout.contains("executed 29 "),
+        "{}",
+        run_full.stdout
+    );
 
     // `--config` accepts `"extended": true`.
     let cfg = dir.path().join("ext.json");

@@ -1,12 +1,17 @@
 //! Orchestration of the TokenScope pipeline:
 //! `scenario -> real SVM execution -> invariant checking -> findings`.
 
-use std::{io, io::Read, path::{Path, PathBuf}, sync::Arc};
+use std::{
+    io,
+    io::Read,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub use tokenscope_adapter::TargetAdapter;
 use tokenscope_adapter::{EscrowAdapter, EscrowFlavor};
-pub use tokenscope_invariants::{FnInvariant, Invariant, InvariantDef, InvariantRegistry};
 use tokenscope_invariants::classify;
+pub use tokenscope_invariants::{FnInvariant, Invariant, InvariantDef, InvariantRegistry};
 use tokenscope_model::{Campaign, Finding, OutcomeClass, RunRecord, Scenario};
 use tokenscope_shrinker::{ShrinkConfig, ShrinkError, ShrinkReport, shrink};
 

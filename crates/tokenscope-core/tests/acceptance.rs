@@ -308,11 +308,16 @@ fn extended_invariants_evaluated_on_real_vulnerable_and_corrected_contracts() {
 
     let rwa = by_name(&prof_camp, "profile-rwa-regulated-mint");
     assert_eq!(rwa.outcome, OutcomeClass::InvariantViolation);
-    assert!(rwa.findings.iter().any(|f| f.invariant_id == "INV-CUST-001"));
-    assert!(!rwa.findings.iter().any(|f| matches!(
-        f.invariant_id.as_str(),
-        "INV-PAUSE-001" | "INV-FREEZE-001"
-    )));
+    assert!(
+        rwa.findings
+            .iter()
+            .any(|f| f.invariant_id == "INV-CUST-001")
+    );
+    assert!(
+        !rwa.findings
+            .iter()
+            .any(|f| matches!(f.invariant_id.as_str(), "INV-PAUSE-001" | "INV-FREEZE-001"))
+    );
 
     let cpi_pause = by_name(&prof_camp, "profile-cpi-guarded-pausable-fee");
     assert_eq!(
@@ -325,7 +330,11 @@ fn extended_invariants_evaluated_on_real_vulnerable_and_corrected_contracts() {
 
     let dust = by_name(&prof_camp, "profile-micro-fee-dust-truncation");
     assert_eq!(dust.outcome, OutcomeClass::InvariantViolation);
-    assert!(dust.findings.iter().any(|f| f.invariant_id == "INV-ZERO-001"));
+    assert!(
+        dust.findings
+            .iter()
+            .any(|f| f.invariant_id == "INV-ZERO-001")
+    );
 
     let freeze_wd = by_name(&prof_camp, "profile-freeze-source-allows-withdraw-dest");
     assert_eq!(
