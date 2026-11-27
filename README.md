@@ -59,6 +59,44 @@ executed 14 | pass 12 | execution failures 2 | invariant violations 0 | setup er
 
 Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
 
+## Test your own program (no Rust code)
+
+`tokenscope sbf-run` loads **any** compiled SBF `.so` into the same real SVM with the real Token-2022
+program. You describe the program in a JSON spec: mints (transfer fee, Pausable, DefaultAccountState,
+PermanentDelegate, transfer hook), accounts (system, program-owned, PDA by seeds, token), byte offsets
+of the fields you care about, the instructions to call as raw hex, and the `checks` that must hold.
+TokenScope executes the calls, reports what actually moved on-chain, and evaluates the checks.
+
+```sh
+tokenscope sbf-run --spec examples/generic-sbf/escrow-vulnerable.json --format text --sarif out.sarif  # exit 1
+tokenscope sbf-run --spec examples/generic-sbf/escrow-corrected.json --format text                     # exit 0
+```
+
+Same deposit of 1,000 with a 2% fee, observed from decoded account state:
+
+| Spec | `escrow_state` liability | `vault` balance | `vault` withheld fee | `INV-ACCT-001` |
+|---|---|---|---|---|
+| `escrow-vulnerable.json` | 0 -> **1000** | 0 -> **980** | 20 | violated |
+| `escrow-corrected.json` | 0 -> 980 | 0 -> 980 | 20 | holds |
+
+A check either compares two observed quantities of a step (`left` / `right`: an account's `balance`,
+`fee`, `liability`, `reserve`, `shares` or `supply`, as `delta`, `before` or `after`, with `eq`, `le` or
+`ge`) or requires the step not to revert (`must_succeed`). Failed checks are findings: `sbf-run` exits
+with 1 and `--sarif` writes them as SARIF 2.1.0 pointing at the source line the check declares, so they
+show up as GitHub code-scanning alerts on the program's code.
+
+To point it at your program, change `elf_path`, `program_id`, the account list, the instruction bytes and
+the checks; nothing in the spec is specific to the demo escrow. Token accounts can be created at the
+owner's associated token address (`"associated": true`), and the SPL Associated Token Account program
+is loaded, so Anchor programs with `associated_token::` constraints run unmodified. `--format json`
+prints full observations (value flows, watched field deltas, authority changes, compute units, logs).
+`tokenscope sbf-session` exposes the same engine as a line-delimited JSON-RPC worker over stdio with
+snapshot and restore.
+
+**What works today vs. next:** `sbf-run` runs any program with declarative checks, verdicts and SARIF.
+The 13 built-in invariants, scenario generation and shrinking still run on the built-in targets;
+generating scenarios for arbitrary programs from their specs is the next milestone.
+
 ## Showcase Video and Demo
 
 https://github.com/user-attachments/assets/9d5a5c23-4715-4365-a486-77e84d1d793d
@@ -195,6 +233,8 @@ cargo test --workspace               # all tests (needs the built programs)
 | `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
 | `tui [--suite S] [--extended] [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
+| `sbf-run --spec FILE [--format json\|text] [--sarif FILE]` | run any SBF program from a JSON spec, evaluate its checks | 0 no findings, 1 findings, 2, 3 |
+| `sbf-session` | JSON-RPC worker over stdio for the generic SBF engine | 0 |
 | `completion <shell>` | generate shell autocompletion (`bash`, `zsh`, `fish`, `powershell`, `elvish`) | 0 |
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
