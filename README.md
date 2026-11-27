@@ -63,7 +63,7 @@ Full walkthrough with replay and minimization: [docs/demo.md](docs/demo.md).
 
 https://github.com/user-attachments/assets/9d5a5c23-4715-4365-a486-77e84d1d793d
 
-> **Video Walkthrough:** [assets/tokenscope-showcase.mp4](assets/tokenscope-showcase.mp4) (02:49 runtime, strictly under the 3-minute hackathon limit).
+> **Video Walkthrough:** [assets/tokenscope-showcase.mp4](assets/tokenscope-showcase.mp4) (02:50 runtime, strictly under the 3-minute hackathon limit).
 > Features real Mollusk SVM execution against un-mocked Token-2022 bytecodes, invariant detection on Pinocchio escrow, deterministic failure minimization, and the live Ratatui TUI dashboard.
 
 ### Interface & Execution Screenshots
