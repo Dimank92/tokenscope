@@ -188,10 +188,10 @@ cargo test --workspace               # all tests (needs the built programs)
 | Command | Purpose | Exit codes |
 |---|---|---|
 | `doctor` | verify the environment, incl. a real fee transfer | 0 ok, 3 problem |
-| `inspect [--target T]` | show target configuration and invariants | 0 |
-| `run --target T --seed N [--count N] [--suite core\|extensions\|all\|none] [--strategy random\|extended\|guided\|stateful] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
-| `replay <scenario-file>` | re-run one scenario | 0 / 1 / 2 / 3 |
-| `minimize <finding-file> [--out F] [--max-attempts N]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
+| `inspect [--target T] [--extended]` | show target configuration and invariants | 0 |
+| `run --target T --seed N [--count N] [--suite core\|extensions\|profiles\|all\|full\|none] [--strategy random\|extended\|guided\|stateful] [--extended] [--out DIR]` / `run --config FILE` | run a campaign, write artifacts | 0 no violations, 1 violations, 2 bad input, 3 setup error |
+| `replay <scenario-file> [--extended]` | re-run one scenario | 0 / 1 / 2 / 3 |
+| `minimize <finding-file> [--out F] [--max-attempts N] [--extended]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
 | `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
 | `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
@@ -199,9 +199,13 @@ cargo test --workspace               # all tests (needs the built programs)
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
 
-Suites: `core` (the original fee-accounting scenarios; default), `extensions` (extension, authorization and
-boundary scenarios), `all`, `none`. Note that the corrected escrow still reports a custody finding in the
-`extensions` suite (`permanent-delegate-drains-vault`): neither flavor checks the mint's extensions.
+Suites: `core` (the original 14 fee-accounting scenarios; default), `extensions` (10 extension, authorization and
+boundary scenarios), `profiles` (5 combined realistic Token-2022 mint profile scenarios), `all` (`core` + `extensions`,
+24 scenarios), `full` (`core` + `extensions` + `profiles`, 29 scenarios), `none`. Passing `--extended` enables
+all 13 invariants (`INV-ACCT/SOLV/ATOM/CONS/AUTH/CUST-001` plus `INV-ZERO/DILUT/SYMM/PAUSE/FREEZE/CPI/HOOK-001`). Note that
+the corrected escrow still reports a custody finding in the `extensions` and `profiles` suites (`permanent-delegate-drains-vault`,
+`profile-rwa-regulated-mint`): neither flavor checks the mint's extensions. Under `--extended`, `fee-100pct-consumes-deposit`
+and `profile-micro-fee-dust-truncation` also trigger `INV-ZERO-001`.
 Strategies: `random` (seeded fee scenarios), `extended` (extension-aware templates), `guided` (mutates the
 suites and the regression corpus and keeps only scenarios that add a new *input-space* cell; it is not
 guided by program coverage), and `stateful` (model-based state-machine generation driven by `TokenReferenceModel`).
