@@ -868,4 +868,45 @@ fn extended_invariants_and_profiles_suite_work_end_to_end() {
     assert_eq!(min.code, 0, "{}{}", min.stdout, min.stderr);
     let minimized = Finding::from_json(&fs::read_to_string(&min_out).unwrap()).unwrap();
     assert!(minimized.minimized.is_some());
+
+    // TUI snapshots support `--suite profiles` and `--extended` (13 invariants).
+    let tui_inv = tokenscope(&[
+        "tui",
+        "--target",
+        FIXED,
+        "--suite",
+        "profiles",
+        "--extended",
+        "--snapshot",
+        "invariants",
+    ]);
+    assert_eq!(tui_inv.code, 0, "{}{}", tui_inv.stdout, tui_inv.stderr);
+    assert!(
+        tui_inv.stdout.contains("Invariants (13 extended)")
+            && tui_inv.stdout.contains("INV-ZERO-001")
+            && tui_inv.stdout.contains("INV-HOOK-001"),
+        "{}",
+        tui_inv.stdout
+    );
+
+    let tui_findings = tokenscope(&[
+        "tui",
+        "--target",
+        FIXED,
+        "--suite",
+        "profiles",
+        "--extended",
+        "--snapshot",
+        "findings",
+    ]);
+    assert_eq!(
+        tui_findings.code, 0,
+        "{}{}",
+        tui_findings.stdout, tui_findings.stderr
+    );
+    assert!(
+        tui_findings.stdout.contains("INV-ZERO-001"),
+        "{}",
+        tui_findings.stdout
+    );
 }

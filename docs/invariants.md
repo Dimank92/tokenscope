@@ -121,6 +121,7 @@ Invariants are tiered by scope via `InvariantLevel`:
 
 ## Adding an invariant
 
-State id, preconditions, expected behavior and exceptions in `InvariantDef`; implement a
-`fn(&StepRecord) -> Verdict`; add held/violated/not-applicable unit tests with synthetic traces;
-add it to `catalog()` and `evaluate`; document it here.
+State id, `InvariantLevel`, preconditions, expected behavior and exceptions in `InvariantDef`; implement a
+`fn(&StepRecord) -> Verdict` (or the `Invariant` trait) and register it in `InvariantRegistry` (using
+`with_extended_invariants()` / `extended_catalog()` or `catalog()`, plus `severity_for` if non-default
+severity is needed); add held/violated/not-applicable unit tests with synthetic traces; document it here.

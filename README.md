@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
   <a href="docs/toolchain.md"><img src="https://img.shields.io/badge/rust-1.99.0%2B-orange.svg" alt="Rust 1.99.0+" /></a>
   <a href="docs/supported-extensions.md"><img src="https://img.shields.io/badge/solana-Token--2022-14F195.svg?logo=solana&logoColor=white" alt="Solana Token-2022" /></a>
-  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-259%20passing-brightgreen.svg" alt="Tests: 259 passing" /></a>
+  <a href="https://github.com/integral-830/tokenscope"><img src="https://img.shields.io/badge/tests-271%20passing-brightgreen.svg" alt="Tests: 271 passing" /></a>
   <a href="docs/architecture.md"><img src="https://img.shields.io/badge/engine-Mollusk%20SVM-9945FF.svg" alt="Mollusk SVM" /></a>
   <a href="FORMAT.md"><img src="https://img.shields.io/badge/security-SARIF%202.1.0-blueviolet.svg" alt="SARIF 2.1.0" /></a>
 </p>
@@ -24,7 +24,7 @@ and writes reproducible findings.
 Target adapter -> Scenarios -> Real SVM execution -> Invariant checking -> Shrinking -> Findings
 ```
 
-> **Status:** version 0.1.0. One target (a demo escrow), six invariants, and 259 passing workspace
+> **Status:** version 0.1.0. One target (a demo escrow), 13 invariants (6 core, 7 `--extended`), and 271 passing workspace
 > tests. Token-2022 behavior verified by executable tests: transfer fees (including epoch delays,
 > `TransferCheckedWithFee`, harvest and withdraw), freeze/thaw, DefaultAccountState, Pausable,
 > transfer hooks (fixture hook), CPI Guard (direct and CPI forwarder fixture), delegates, permanent
@@ -194,7 +194,7 @@ cargo test --workspace               # all tests (needs the built programs)
 | `minimize <finding-file> [--out F] [--max-attempts N] [--extended]` | shrink a finding's scenario | 0, 2, 4 not reproducible |
 | `report <campaign-id> [--format json\|text\|markdown\|sarif]` | print or export a campaign report | 0, 2 |
 | `corpus list \| replay <id>\|--all \| add <scenario> --description ...` | regression corpus | 0, 2, 3, 4 mismatch |
-| `tui [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
+| `tui [--suite S] [--extended] [--snapshot SCREEN]` | interactive UI (or print one screen headlessly) | 0, 2, 3 |
 | `completion <shell>` | generate shell autocompletion (`bash`, `zsh`, `fish`, `powershell`, `elvish`) | 0 |
 
 Targets: `demo-escrow-vulnerable`, `demo-escrow-corrected`, or `demo-escrow` (both).
@@ -212,8 +212,8 @@ guided by program coverage), and `stateful` (model-based state-machine generatio
 
 ## Repository layout
 
-`crates/tokenscope-{model,executor,adapter,invariants,scenarios,shrinker,core,report,cli,tui}`,
-`programs/demo-escrow`, `fixtures/` (scenarios and the regression corpus), `scripts/`, `docs/`.
+`crates/tokenscope-{model,executor,adapter,invariants,scenarios,shrinker,core,report,cli,tui,fuzz-harness}`,
+`programs/demo-{escrow,hook,forwarder}`, `fixtures/` (scenarios and the regression corpus), `scripts/`, `docs/`.
 Architecture: [docs/architecture.md](docs/architecture.md).
 
 ## Execution boundaries and security model

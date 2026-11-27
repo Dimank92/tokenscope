@@ -148,6 +148,9 @@ pub enum Command {
         /// Shorthand for `--suite none`.
         #[arg(long)]
         no_suite: bool,
+        /// Enable the 13-invariant extended set (core 6 + ZERO/DILUT/SYMM + PAUSE/FREEZE/CPI/HOOK).
+        #[arg(long)]
+        extended: bool,
         /// Artifact directory used by the export key (default: `tokenscope-out`).
         #[arg(long)]
         out: Option<PathBuf>,
