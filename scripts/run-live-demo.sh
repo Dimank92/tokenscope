@@ -4,8 +4,9 @@
 #
 # usage: scripts/run-live-demo.sh [path-to-tokenscope]     (default: target/release/tokenscope)
 # Requires cargo-build-sbf 4.5.0 and platform-tools v1.58 (see scripts/build-programs.sh).
-# Every spec must report findings (exit 1), and the rule IDs found must equal
-# demo/expected-findings.txt; any other outcome is a regression and exits non-zero.
+# Every spec in demo/specs must report findings (exit 1), the rule IDs found must equal
+# demo/expected-findings.txt, and every control run in demo/control (no transfer fee) must pass all
+# its checks (exit 0); any other outcome is a regression and exits non-zero.
 # Output: target/demo/escrow.so and target/demo/results/<spec>.{txt,sarif}.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -37,6 +38,19 @@ for spec in demo/specs/*.json; do
   cat "$OUT/results/$name.txt"
   [ "$rc" -eq 1 ] || { echo "expected findings (exit 1) from $spec, got exit $rc" >&2; exit 1; }
   grep -E '^[A-Z0-9-]+ \[(error|warning|note)\]' "$OUT/results/$name.txt" | cut -d' ' -f1 >>"$OUT/found.txt"
+done
+
+# Control runs: same program and calls with plain mints (no transfer fee). Every check must hold,
+# so a finding here means TokenScope flags a correct flow.
+for spec in demo/control/*.json; do
+  name=$(basename "$spec" .json)
+  set +e
+  "$BIN" sbf-run --spec "$spec" --format text --sarif "$OUT/results/$name.sarif" >"$OUT/results/$name.txt"
+  rc=$?
+  set -e
+  echo "== control $name (exit $rc)"
+  cat "$OUT/results/$name.txt"
+  [ "$rc" -eq 0 ] || { echo "control run $spec must pass every check, got exit $rc" >&2; exit 1; }
 done
 
 LC_ALL=C sort "$OUT/found.txt" >"$OUT/found.sorted.txt"

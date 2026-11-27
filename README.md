@@ -73,7 +73,10 @@ the escrow source lines, visible without signing in:
 | `ESCROW-TAKE-001` | 2% fee on the offered token | `take_offer` reverts (Token-2022 error 35, vault holds withheld fees) | `take_offer.rs:128` |
 | `ESCROW-REFUND-001` | 2% fee on the offered token | `refund_offer` reverts the same way | `refund_offer.rs:86` |
 
-The job is green when exactly these findings are reported and red if TokenScope stops finding them.
+Control runs use the same program and calls with plain mints (no fee): every check holds there
+(maker receives exactly 1000, take and refund succeed), so the findings come from the fee, not from
+the checks. The job is green when exactly these findings are reported and the control runs are
+clean, and red otherwise.
 Details and a local run: [demo/README.md](demo/README.md).
 
 ## Test your own program (no Rust code)

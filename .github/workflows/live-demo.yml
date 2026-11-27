@@ -2,7 +2,8 @@ name: Live demo
 
 # Builds a program TokenScope did not write (the Solana Foundation Anchor escrow example in
 # demo/escrow-anchor, unmodified) and checks it with `tokenscope sbf-run`. The job passes when
-# TokenScope reports exactly the findings in demo/expected-findings.txt; the findings are shown as
+# TokenScope reports exactly the findings in demo/expected-findings.txt and the control runs (no
+# transfer fee, demo/control) are clean; the findings are shown as
 # annotations on the escrow source lines and in the job summary.
 
 on:

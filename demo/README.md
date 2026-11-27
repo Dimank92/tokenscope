@@ -15,6 +15,15 @@ associated token accounts, the offer PDA, the vault ATA, the Anchor instruction 
 | `escrow-fee-on-wanted-token.json` | 2% transfer fee on mint B | maker receives `token_b_wanted_amount` | fails: wanted 1000, maker received 980 (20 withheld) |
 | `escrow-fee-on-offered-token.json` | 2% transfer fee on mint A | `take_offer` / `refund_offer` succeed | both revert with Token-2022 error 35 |
 
+`control/` runs the same program and the same calls with plain Token-2022 mints (no transfer fee).
+There every check holds: the maker receives exactly 1000, `take_offer` and `refund_offer` succeed and
+the refund returns the full 1000. The findings above come from the fee, not from the checks.
+
+| Control spec | Calls | Result |
+|---|---|---|
+| `escrow-no-fee-take.json` | `make_offer`, `take_offer` | 0 findings |
+| `escrow-no-fee-refund.json` | `make_offer`, `refund_offer` | 0 findings |
+
 Error 35 is `AccountHasWithheldTransferFees`. The vault keeps the withheld fee, and both
 instructions close the vault, which Token-2022 refuses while withheld fees remain. The offer can be
 neither taken nor refunded until somebody runs `HarvestWithheldTokensToMint` on the vault
@@ -28,6 +37,7 @@ cargo build --release -p tokenscope-cli
 ./scripts/run-live-demo.sh target/release/tokenscope
 ```
 
-The script exits 0 only when TokenScope reports exactly the rule IDs in `expected-findings.txt`, so
+The script exits 0 only when TokenScope reports exactly the rule IDs in `expected-findings.txt` and the
+control runs report nothing, so
 the [Live demo workflow](../.github/workflows/live-demo.yml) is green while the findings are found
 and turns red if TokenScope stops finding them.
